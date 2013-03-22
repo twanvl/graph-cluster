@@ -10,7 +10,7 @@ clean:
 
 # Dependencies
 HEADERS = lso_cluster.hpp lso_cluster_impl.hpp loss_functions.hpp trace_file_io.cpp
-CXXFLAGS = -g -Wall
+CXXFLAGS = -O2 -Wall
 
 # Stand alone program
 stand-alone: lso_cluster
