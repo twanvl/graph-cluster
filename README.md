@@ -220,7 +220,7 @@ Here is a larger example:
 Usage, stand alone version
 ------------
 
-Graphs should be given on stdin or as a text file in the first argument. Each line should look like:
+Graphs should be given on in a text file whos name is passed as the first argument (or `-` for stdin). Each line should look like:
 
      <from> <to> <weight>
 
@@ -232,7 +232,7 @@ The output is written as text to stdout, where each line gives a cluster label. 
 Other parameters are specified as `--parameter value`, with the same name as the matlab version parameters. For example `--loss infomap` uses the infomap loss function.
 
     $ cat example.in
-    $ lso_cluster < example.in
+    $ lso_cluster example.in
 
 
 References

@@ -10,11 +10,12 @@ clean:
 
 # Dependencies
 HEADERS = lso_cluster.hpp lso_cluster_impl.hpp loss_functions.hpp trace_file_io.cpp
-CXX_OPTS = -O2
+CXXFLAGS = -g -Wall
 
 # Stand alone program
 stand-alone: lso_cluster
-lso_cluster.o: lso_cluster.cpp $(HEADERS)
+lso_cluster: lso_cluster.cpp $(HEADERS)
+	$(CXX) $(CXXFLAGS) -o $@ lso_cluster.cpp
 
 # Octave bindings
 octave-bindings: lso_cluster.oct

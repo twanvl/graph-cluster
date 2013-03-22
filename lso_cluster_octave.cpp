@@ -60,9 +60,6 @@ struct ParamSourceOctave : ParamSource {
 	virtual bool end() {
 		return i >= args.length();
 	}
-	virtual int get_int_argument() {
-		return next().int_value();
-	}
 	virtual string get_string_argument(vector<double>* more_out = 0) {
 		if (more_out && i < args.length() && args(i).is_cell()) {
 			// optionally: a cell array with multiple arguments
@@ -80,6 +77,12 @@ struct ParamSourceOctave : ParamSource {
 	}
 	virtual double get_double_argument() {
 		return next().double_value();
+	}
+	virtual int get_int_argument() {
+		return next().int_value();
+	}
+	virtual bool get_bool_argument() {
+		return next().bool_value();
 	}
 	virtual vector<clus_t> get_1dvec_argument() {
 		return clustering_from_octave(next().matrix_value());
