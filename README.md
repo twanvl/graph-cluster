@@ -4,10 +4,14 @@ Local Search Optimization for graph clustering
 Introduction
 ------------
 
-This program uses a local search optimization to find an approximately optimal clustering of a undirected graph according to some objective function. Many different objectives are supported. There are bindings for octave and MATLAB.
+This program uses a local search optimization to find an approximately optimal clustering of a undirected graph according to some objective function.
+Many different objectives are supported.
+There are bindings for octave and MATLAB.
 
 Formally, the problem that is solved is to find a clustering C of the nodes in a graph that minimizes the loss
     loss(C) = f(sum_{c ∈ C} g(c))
+
+The optimization method is the one developed by Blondel et.al. \[2], and also used by \[1] and \[3].
 
 Installation
 ------------
@@ -137,7 +141,7 @@ Some of the supported loss functions are:
   `loss = -sum_c (w_c/m - v_c^2/m^2)`
   This is the negation of the usual definition
 
-* `'infomap'`: The infomap objective by <TODO>
+* `'infomap'`: The infomap objective by [3].
 
 * `'ncut'`: Normalized cut,
   `loss = sum_c (v_c - w_c) / n_c`
@@ -181,6 +185,12 @@ Find a solution with exactly 3 clusters:
 
     c = greedy_cluster(A, 'num_clusters',3);
 
+The algorithm finds good solutions
+
+    % An LFR graph with mixing 0.6 (See [3])
+    
+    d=lso_cluster(A,'loss','w-log-v');numel(unique(d)),normalized_mutual_information(c,d)
+
 
 Usage, stand alone version
 ------------
@@ -203,5 +213,28 @@ Other parameters are specified as `--parameter value`, with the same name as the
 References
 ----------
 
-TODO: more references
-[Graph clustering: does the optimization procedure matter more than the objective function?, Twan van Laarhoven and Elena Marchiori, Physical Review E 2013](http://cs.ru.nl/~T.vanLaarhoven/clustering2012/)
+\[1] Graph clustering: does the optimization procedure matter more than the objective function?;
+     Twan van Laarhoven and Elena Marchiori;
+     Physical Review E 87, 012812 (2013)
+     [\[pdf\]](http://cs.ru.nl/~T.vanLaarhoven/clustering2012/PhysRevE.87.012812.pdf)
+     [\[publisher\]](http://link.aps.org/doi/10.1103/PhysRevE.87.012812)
+     [\[website\]](http://cs.ru.nl/~T.vanLaarhoven/clustering2012/)
+
+\[2] Fast unfolding of communities in large networks;
+     Vincent D Blondel1, Jean-Loup Guillaume1, Renaud Lambiotte1 and Etienne Lefebvre;
+     J. Stat. Mech. Theory Exp. 2008, P10008 (2008),
+     [\[publisher\]](http://iopscience.iop.org/1742-5468/2008/10/P10008/)
+     [\[arxiv\]](http://arxiv.org/abs/0803.0476)
+
+\[3] Maps of random walks on complex networks reveal community structure;
+     M. Rosvall and C. T. Bergstrom;
+     Proc. Natl. Acad. Sci. USA 105, 1118 (2008).
+     [\[publisher\]](http://dx.doi.org/10.1073/pnas.0706851105)
+     [\[arxiv\]](http://arxiv.org/abs/0707.0609)
+     [\[code\]](http://www.tp.umu.se/~rosvall/code.html)
+
+\[4] Benchmark graphs for testing community detection algorithms;
+     A. Lancichinetti, S. Fortunato and F. Radicchi;
+     Physical Review E 78, 046110 (2008)
+     [\[pdf\]](https://sites.google.com/site/santofortunato/benchmark.pdf?attredirects=0)
+     [\[website\]](https://sites.google.com/site/santofortunato/inthepress2)
