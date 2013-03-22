@@ -79,15 +79,15 @@ vector<clus_t> clustering_from_mex(const mxArray* ptr) {
 }
 
 double double_from_mex(const mxArray* ptr) {
-	throw "ARK";
+	if (mxGetNumberOfElements(ptr) != 1) throw std::invalid_argument("Expected a scalar value");
+	return mxGetScalar(ptr);
 }
 int int_from_mex(const mxArray* ptr) {
-	throw "BORK";
+	double v = double_from_mex(ptr);
+	return (int)round(v);
 }
 string string_from_mex(const mxArray* ptr) {
-	mexPrintf("string_from_mex");
 	char* str = mxArrayToString(ptr);
-	mexPrintf("string_from_mex: %s",str);
 	if (str == 0) {
 		throw std::invalid_argument("Expected a string");
 	}
@@ -136,7 +136,19 @@ struct ParamSourceMatlab : ParamSource {
 	}
 	virtual string get_string_argument(vector<double>* more_out = 0) {
 		// optionally: a cell array with multiple arguments
-		return string_from_mex(next());
+		const mxArray* ptr = next();
+		if (mxIsCell(ptr)) {
+			int n = mxGetNumberOfElements(ptr);
+			if (n == 0) {
+				throw std::invalid_argument("Use a cell {'name',args,..} for loss functions with arguments");
+			}
+			for (int i = 1 ; i < n ; ++i) {
+				more_out->push_back(double_from_mex(mxGetCell(ptr,i)));
+			}
+			return string_from_mex(mxGetCell(ptr,0));
+		}else {
+			return string_from_mex(ptr);
+		}
 	}
 	virtual double get_double_argument() {
 		return double_from_mex(next());
@@ -174,7 +186,7 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[]) {
 		// store outputs
 		if (nlhs > 0) plhs[0] = to_mex(runner.clustering);
 		if (nlhs > 1) plhs[1] = mxCreateDoubleScalar(runner.loss);
-		if (nlhs > 2) plhs[2] = mxCreateDoubleScalar(runner.clustering.size());
+		if (nlhs > 2) plhs[2] = mxCreateDoubleScalar(runner.num_clusters);
 	} catch (std::exception const& e) {
 		mexErrMsgTxt(e.what());
 	} catch (...) {

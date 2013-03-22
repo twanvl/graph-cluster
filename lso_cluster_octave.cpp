@@ -67,14 +67,13 @@ struct ParamSourceOctave : ParamSource {
 		if (more_out && i < args.length() && args(i).is_cell()) {
 			// optionally: a cell array with multiple arguments
 			Cell more = next().cell_value();
-			if (more.nelem() > 0) {
-				for (int i = 1 ; i < more.nelem() ; ++i) {
-					more_out->push_back(more(i).double_value());
-				}
-				return more(0).string_value();
-			} else {
+			if (more.nelem() == 0) {
 				throw std::invalid_argument("Use a cell {'name',args,..} for loss functions with arguments");
 			}
+			for (int i = 1 ; i < more.nelem() ; ++i) {
+				more_out->push_back(more(i).double_value());
+			}
+			return more(0).string_value();
 		} else {
 			return next().string_value();
 		}
@@ -108,7 +107,7 @@ DEFUN_DLD(lso_cluster,args,nargout,USAGE_INFO){
 		octave_value_list retval;
 		retval(0) = to_octave(runner.clustering);
 		retval(1) = runner.loss;
-		retval(2) = runner.clustering.size();
+		retval(2) = runner.num_clusters;
 		return retval;
 		
 	} catch (std::exception const& e) {

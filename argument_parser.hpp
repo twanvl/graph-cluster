@@ -58,6 +58,7 @@ struct LsoMainFunction {
 	// The output
 	vector<clus_t> clustering;
 	double loss;
+	int num_clusters;
 	
 	// Defaults
 	LsoMainFunction(OptimizationParams const& params)
@@ -184,6 +185,7 @@ struct LsoMainFunction {
 		// outputs
 		clustering = clus.get_clustering();
 		loss = clus.get_loss();
+		num_clusters = clus.num_clusters();
 	}
 };
 
