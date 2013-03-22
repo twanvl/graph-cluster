@@ -9,9 +9,10 @@ Many different objectives are supported.
 There are bindings for octave and MATLAB.
 
 Formally, the problem that is solved is to find a clustering C of the nodes in a graph that minimizes the loss
+
     loss(C) = f(sum_{c ∈ C} g(c))
 
-The optimization method is the one developed by Blondel et.al. \[2], and also used by \[1] and \[3].
+The optimization method is the one introduced by Blondel et.al. \[2], and also used by \[1] and \[3].
 
 Installation
 ------------
@@ -152,10 +153,14 @@ Some of the supported loss functions are:
 * `{'pmod',p}`: Modularity with a different power,
   `loss = -sum_c (w_c/m - (v_c/m)^2)`
 
+* `{'mom',m}`: Monotonic variant of modularity,
+  `loss = -sum_c (w_c/(m + 2v_c) - (v_c/(m + 2v_c))^2)`
+
 * `'w-log-v'`,
   `loss = sum_c (w_c/m * log(v_c) )`
 
 See `loss_functions.hpp` for the full list.
+Some loss functions have parameters, these are passed as a cell array where the first element is the name.
 
 
 Examples
@@ -185,12 +190,32 @@ Find a solution with exactly 3 clusters:
 
     c = greedy_cluster(A, 'num_clusters',3);
 
-The algorithm finds good solutions
 
-    % An LFR graph with mixing 0.6 (See [3])
+Here is a larger example:
+
+    % An LFR graph with mixing 0.6 and 1000 nodes (See [4])
+    % The gaph is in A, the ground truth is in c
+    > load example-LFR.mat
     
-    d=lso_cluster(A,'loss','w-log-v');numel(unique(d)),normalized_mutual_information(c,d)
-
+    > [d,l,k] = lso_cluster(A,'loss','modularity');
+    > normalized_mutual_information(c,d)
+    ans = 0.93011
+    
+    % This solution has too few clusters
+    > k
+    k = 25
+    > numel(unique(c))
+    ans = 41
+    
+    % So, force the number of clusters to be 41
+    > [d,l,k] = lso_cluster(A,'loss','modularity','num_clusters',41);
+    > normalized_mutual_information(c,d)
+    ans = 0.99216
+    
+    % Or use a different loss function
+    > [d,l,k] = lso_cluster(A,'loss','w-log-v');
+    > normalized_mutual_information(c,d)
+    ans = 1
 
 Usage, stand alone version
 ------------
@@ -221,7 +246,7 @@ References
      [\[website\]](http://cs.ru.nl/~T.vanLaarhoven/clustering2012/)
 
 \[2] Fast unfolding of communities in large networks;
-     Vincent D Blondel1, Jean-Loup Guillaume1, Renaud Lambiotte1 and Etienne Lefebvre;
+     Vincent D Blondel, Jean-Loup Guillaume, Renaud Lambiotte and Etienne Lefebvre;
      J. Stat. Mech. Theory Exp. 2008, P10008 (2008),
      [\[publisher\]](http://iopscience.iop.org/1742-5468/2008/10/P10008/)
      [\[arxiv\]](http://arxiv.org/abs/0803.0476)
