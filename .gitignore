@@ -1,7 +1,14 @@
+# Local configuration
+.octaverc
+
 # Compiled Object files
 *.slo
 *.lo
 *.o
+*.mex
+*.mexa64
+*.oct
+lso_cluster
 
 # Compiled Dynamic libraries
 *.so

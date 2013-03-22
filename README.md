@@ -19,12 +19,12 @@ To build the stand alone version:
 To build the octave interface:
 
     octave
-    mkoctfile lso_cluster.octave
+    make_octave
 
-To build the matlab interface
+To build the matlab interface:
 
     matlab
-    mex lso_cluster.mex
+    make_matlab
 
 Usage
 ------------
@@ -84,6 +84,10 @@ Optional parameters about internal algorithm details, you only need these if you
  * `'num_repeats', n`
    Repeat the search n times from scratch with different random seeds and return the best result.
    Default: 1
+ 
+ * `'num_partitions', n`
+   Number of times to try and break apart the clusters and re-cluster them
+   Default: 0
  
  * `'optimize_higher_level', bool`
    Use a hierarchical optimizer, where small clusters are considered as nodes of a higher level graph.
@@ -160,7 +164,7 @@ Find the clustering of a graph by optimizing modularity:
     A = A | A';
     % Find clusterings
     c = greedy_cluster(A);
-    % c = [0 0 0 0 1 1 1 1 1 2 2 2 2 2 2]
+    % c = [0 0 0 0 1 1 1 1 1 2 2 2 2 2 2]'
 
 Evaluate the modularity of a given clustering:
 
@@ -191,6 +195,9 @@ If needed, you can add edges `n n 0` to force the graph to have `n+1` nodes.
 The output is written as text to stdout, where each line gives a cluster label. With `-o <filename>` the output is directed to a file instead.
 
 Other parameters are specified as `--parameter value`, with the same name as the matlab version parameters. For example `--loss infomap` uses the infomap loss function.
+
+    $ cat example.in
+    $ lso_cluster < example.in
 
 
 References
