@@ -19,7 +19,7 @@ Installation
 
 To build the stand alone version:
 
-    make stand-alone
+    make
 
 To build the octave interface:
 

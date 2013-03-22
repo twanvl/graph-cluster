@@ -1,1 +1,1 @@
-mex lso_cluster_mex.cpp -o lso_cluster -Wall
+mex lso_cluster_mex.cpp -o lso_cluster
