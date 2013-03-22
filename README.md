@@ -210,7 +210,7 @@ Here is a larger example:
     % So, force the number of clusters to be 41
     > [d,l,k] = lso_cluster(A,'loss','modularity','num_clusters',41);
     > normalized_mutual_information(c,d)
-    ans = 0.99216
+    ans = 1
     
     % Or use a different loss function
     > [d,l,k] = lso_cluster(A,'loss','w-log-v');

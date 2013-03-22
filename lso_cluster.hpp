@@ -341,7 +341,7 @@ class Clustering {
 	vector<clus_t> const& get_clustering();
 	void set_clustering(vector<clus_t> const& clus);
 	
-	Clustering(const SparseMatrix& graph, const OptimizationParams& params, ClusteringStats* sub_stats = NULL);
+	Clustering(const SparseMatrix& graph, const OptimizationParams& params, ClusteringStats* sub_stats = NULL, double extra_loss_self = 0.0);
 	
 	/// Reset the clustering to each node being in its own cluster
 	void reset_to_singletons();

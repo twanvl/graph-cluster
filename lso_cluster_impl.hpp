@@ -184,13 +184,13 @@ bool next_clustering(vector<clus_t>& clus, int num_clus) {
 // Implementation: initialization stuff
 // -----------------------------------------------------------------------------
 
-Clustering::Clustering(const SparseMatrix& a, const OptimizationParams& params, ClusteringStats* sub_stats)
+Clustering::Clustering(const SparseMatrix& a, const OptimizationParams& params, ClusteringStats* sub_stats, double extra_loss_self)
 	: params(params)
 	, trace_out(params.trace_out)
 	, neighbors(a.cols())
 	, node_perm(a.cols())
 	, clus_size(a.cols())
-	, extra_loss_self(0.0)
+	, extra_loss_self(extra_loss_self)
 	, a(a)
 	, node_clus(a.cols())
 {
@@ -511,18 +511,20 @@ bool Clustering::optimize_higher_level(bool always_accept, bool (Clustering::*op
 	// first, reduce the clusters to [0..m]
 	size_t num_clus = compress_assignments(node_clus);
 	recalc_internal_data();
+	
 	// Generate higher level Clustering object
 	if (params.verbosity >= 3) params.debug_out << "  Optimize higher level: " << endl;
 	SparseMatrix b = higher_level_graph(a, node_clus, num_clus);
-	Clustering higher(b, params, &clus_stats);
-	higher.extra_loss_self = extra_loss_self;
+	Clustering higher(b, params, &clus_stats, extra_loss_self);
 	higher_level_partition(higher.node_partition, node_partition, node_clus, num_clus);
+	
 	// check that loss calculation is correct
 	if (abs(loss - higher.loss) > validate_epsilon) {
 		//(params.check_invariants ? error : warning)("Incorrect loss on higher level: %f != %f", loss, higher.loss);
-		printf("Incorrect loss on higher level: %f != %f", loss, higher.loss);
+		printf("Incorrect loss on higher level: %f != %f\n", loss, higher.loss);
 		if (params.check_invariants) throw std::logic_error("Incorrect loss on higher level");
 	}
+	
 	// trace for higher level
 	vector<shared_ptr<TraceStep> > sub_trace;
 	vector<node_t> sub_mapping;
@@ -531,9 +533,11 @@ bool Clustering::optimize_higher_level(bool always_accept, bool (Clustering::*op
 		higher.trace_out = &sub_trace;
 		higher.trace("init");
 	}
+	
 	// now cluster on a higher level
 	bool changes = (higher.*opt)();
 	//higher.recalc_internal_data(); // make sure loss is exact
+	
 	// use for this?
 	if (changes && (always_accept || higher.loss < this->loss - epsilon)) {
 		merge_from_higher_level(node_clus,higher.node_clus);
