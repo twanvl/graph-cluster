@@ -81,7 +81,7 @@ struct LsoMainFunction {
 		}
 	}
 	
-	void add_parameter(string const& key, ArgSource& args) {
+	virtual void add_parameter(string const& key, ArgSource& args) {
 		if (key == "loss" || key == "lossfun" || key == "objective") {
 			vector<double> more;
 			string lossname = args.get_string_argument(&more);

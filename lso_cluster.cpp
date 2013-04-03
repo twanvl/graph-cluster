@@ -120,6 +120,23 @@ vector<clus_t> load_clustering(string const& fn) {
 	}
 }
 
+void print_clustering(ostream& out, vector<clus_t> const& clustering) {
+	for (size_t i = 0 ; i < clustering.size() ; ++i) {
+		out << clustering[i] << endl;
+	}
+}
+void print_clustering(std::string const& fn, vector<clus_t> const& clustering) {
+	if (fn == "-" || fn.empty()) {
+		print_clustering(cout, clustering);
+	} else {
+		ofstream fs(fn.c_str());
+		if (!fs.good()) {
+			throw std::runtime_error("Unable to open file: " + fn);
+		}
+		print_clustering(fs, clustering);
+	}
+}
+
 // -----------------------------------------------------------------------------
 // Command line parsing
 // -----------------------------------------------------------------------------
@@ -152,6 +169,10 @@ struct ParamSourceCommandline : ParamSource {
 			}
 			// normal arguments
 			return opt+2;
+		} else if (opt[0] == '-' && opt[1] == 'o' && opt[2] == 0) {
+			return "out";
+		} else if (opt[0] == '-' && opt[1] == 'q' && opt[2] == 0) {
+			return "quiet";
 		} else {
 			throw std::invalid_argument("Expected an optional parameter name ('--something')");
 		}
@@ -186,6 +207,26 @@ struct ParamSourceCommandline : ParamSource {
 	}
 };
 
+struct LsoMainFunctionCommandLine : LsoMainFunction {
+	// extra options
+	string output_file;
+	bool quiet;
+	
+	LsoMainFunctionCommandLine()
+		: LsoMainFunction(cerr)
+		, quiet(false)
+	{}
+	
+	virtual void add_parameter(string const& key, ArgSource& args) {
+		if (key == "out") {
+			output_file = args.get_string_argument();
+		} else if (key == "quiet") {
+			quiet = true;
+		} else {
+			LsoMainFunction::add_parameter(key,args);
+		}
+	}
+};
 
 // -----------------------------------------------------------------------------
 // Implementation
@@ -203,16 +244,16 @@ int main(int argc, char const** argv) {
 	try {
 		// parse arguments, and run the clustering algorithm
 		ParamSourceCommandline param_source(argc-1,argv+1);
-		LsoMainFunction runner(cout);
+		LsoMainFunctionCommandLine runner;
 		runner.add_all_parameters(param_source);
 		runner.run();
 		
 		// store outputs
-		cerr << "loss: " << runner.loss << endl;
-		cerr << "num clusters: " << runner.num_clusters << endl;
-		for (size_t i = 0 ; i < runner.clustering.size() ; ++i) {
-			cout << runner.clustering[i] << endl;
+		if (!runner.quiet) {
+			cerr << "loss: " << runner.loss << endl;
+			cerr << "num clusters: " << runner.num_clusters << endl;
 		}
+		print_clustering(runner.output_file, runner.clustering);
 		
 	} catch (std::exception const& e) {
 		cerr << e.what() << endl;
