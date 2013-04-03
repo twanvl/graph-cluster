@@ -164,7 +164,7 @@ struct ParamSourceCommandline : ParamSource {
 	}
 	virtual bool get_bool_argument() {
 		if (i >= argc || argv[i][0] == '-') {
-			if (i > 0 && argv[i-1][0] == '-' && argv[i-1][0] == '-' && argv[i-1][0] == 'n' && argv[i-1][0] == 'o') {
+			if (i > 0 && i+1 < argc && argv[i-1][0] == '-' && argv[i-1][0] == '-' && argv[i-1][0] == 'n' && argv[i-1][0] == 'o') {
 				return false;
 			} else {
 				return true;

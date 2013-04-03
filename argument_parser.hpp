@@ -75,7 +75,7 @@ struct LsoMainFunction {
 		graph = args.get_matrix_argument();
 		// then come the optional parameters
 		while (!args.end()) {
-			string key = args.get_string_argument();
+			string key = args.get_parameter_name();
 			normalize_key(key);
 			add_parameter(key, args);
 		}
