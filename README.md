@@ -151,7 +151,7 @@ Some of the supported loss functions are:
   `loss = sum_c (v_c - w_c) / v_c`
 
 * `{'pmod',p}`: Modularity with a different power,
-  `loss = -sum_c (w_c/m - (v_c/m)^2)`
+  `loss = -sum_c (w_c/m - (v_c/m)^p / (p-1))`
 
 * `{'mom',m}`: Monotonic variant of modularity,
   `loss = -sum_c (w_c/(m + 2v_c) - (v_c/(m + 2v_c))^2)`
