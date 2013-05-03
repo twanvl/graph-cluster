@@ -13,6 +13,7 @@
 #include <fstream>
 #include <cstring>
 #include <boost/lexical_cast.hpp>
+#include <cstdlib>
 
 #define OCTAVE_QUIT do{}while(0)
 #include "lso_cluster_impl.hpp"
@@ -178,7 +179,16 @@ struct ParamSourceCommandline : ParamSource {
 		}
 	}
 	virtual string get_string_argument(vector<double>* more_out = 0) {
-		return next();
+		const char* s = next();
+		if (i + 1 < argc) {
+			// grab extra string data
+			more_out->clear();
+			for (int j = i; j < argc && argv[j][0] != '-'; ++j) {
+				more_out->push_back(atof(argv[j]));
+			}
+			i += more_out->size();
+		}
+		return s;
 	}
 	virtual int get_int_argument() {
 		return lexical_cast<int>(next());
