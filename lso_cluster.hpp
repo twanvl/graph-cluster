@@ -7,13 +7,19 @@
 #ifndef HEADER_LSO_CLUSTER
 #define HEADER_LSO_CLUSTER
 
+#define _USE_MATH_DEFINES
 #include <vector>
 #include <map>
 #include <algorithm>
 #include <string>
+#include <limits>
 #include <limits.h>
 #include <math.h>
 #include <boost/shared_ptr.hpp>
+
+#ifndef INFINITY
+#define INFINITY std::numeric_limits<double>::infinity()
+#endif
 
 #include "sparse_matrix.hpp"
 
