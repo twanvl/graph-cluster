@@ -10,6 +10,7 @@
 #include <iomanip>
 #include <stdexcept>
 #include <cmath>
+#include <stdarg.h>
 
 namespace lso_cluster {
 
@@ -21,6 +22,15 @@ static const double validate_epsilon = 1e-10;
 // -----------------------------------------------------------------------------
 // Utilities for debug output
 // -----------------------------------------------------------------------------
+
+inline std::logic_error mk_logic_error(char const* format, ...) {
+    char buf[1024];
+    va_list args;
+    va_start(args, format);
+    vsprintf(buf, format, args);
+    va_end(args);
+    return std::logic_error(buf);
+}
 
 template <typename T>
 std::ostream& operator << (std::ostream& str, std::vector<T> const& x) {
@@ -522,7 +532,7 @@ bool Clustering::optimize_higher_level(bool always_accept, bool (Clustering::*op
 	if (abs(loss - higher.loss) > validate_epsilon) {
 		//(params.check_invariants ? error : warning)("Incorrect loss on higher level: %f != %f", loss, higher.loss);
 		printf("Incorrect loss on higher level: %f != %f\n", loss, higher.loss);
-		if (params.check_invariants) throw std::logic_error("Incorrect loss on higher level");
+		if (params.check_invariants) throw mk_logic_error("Incorrect loss on higher level: %f != %f\n", loss, higher.loss);
 	}
 	
 	// trace for higher level
@@ -723,10 +733,9 @@ bool Clustering::reduce_num_clusters_with_extra_loss() {
 // -----------------------------------------------------------------------------
 
 void Clustering::verify_clus_stats() const {
-	#define error(X...) {printf(X); throw std::logic_error("verify cluster stats failed");}
 	#define check(sub,str,ii) \
 		if (abs(clus_stats sub - cs sub) > validate_epsilon) \
-			error("At " str "  %f != %f (diff: %g)\n",ii,clus_stats sub, cs sub, clus_stats sub - cs sub)
+			throw mk_logic_error("At " str "  %f != %f (diff: %g)\n",ii,clus_stats sub, cs sub, clus_stats sub - cs sub)
 	ClusteringStats cs;
 	init_stats(cs, a, &node_clus[0], &node_stats);
 	for (size_t i = 0 ; i < clus_stats.size() ; ++i) {
@@ -740,11 +749,11 @@ void Clustering::verify_clus_stats() const {
 	Doubles new_sl;
 	double new_loss = params.lossfun->loss(cs, num_clusters(), &new_sl) + extra_loss_self * cs.total.self / cs.total.degree;
 	if (abs(loss - new_loss) > validate_epsilon) {
-		error("Incorrect loss update:  %f != %f\n",loss,new_loss);
+		throw mk_logic_error("Incorrect loss update:  %f != %f\n",loss,new_loss);
 	}
 	for (int i = 0 ; i < MAX_DOUBLES ; ++i) {
 		if (abs(sum_local_loss[i] - new_sl[i]) > validate_epsilon) {
-			error("Incorrect local loss [%d] update:  %f != %f\n",i, sum_local_loss[i], new_sl[i]);
+			throw mk_logic_error("Incorrect local loss [%d] update:  %f != %f\n",i, sum_local_loss[i], new_sl[i]);
 		}
 	}
 	#undef check
@@ -760,7 +769,7 @@ void Clustering::verify_partition() const {
 	for (size_t i = 0 ; i < clus_nodes.size() ; ++i) {
 		for (size_t j = 0 ; j < clus_nodes[i].size() ; ++j) {
 			if (node_partition[clus_nodes[i][0]] != node_partition[clus_nodes[i][j]]) {
-				error("ERROR: cluster %d contains nodes %d in %d, and %d in %d",(int)i,
+				throw mk_logic_error("ERROR: cluster %d contains nodes %d in %d, and %d in %d",(int)i,
 						clus_nodes[i][0], node_partition[clus_nodes[i][0]],
 						clus_nodes[i][j], node_partition[clus_nodes[i][j]]);
 			}
