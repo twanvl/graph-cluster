@@ -16,6 +16,7 @@
 #include <limits.h>
 #include <math.h>
 #include <boost/shared_ptr.hpp>
+#include <boost/math/special_functions/fpclassify.hpp> // isnan / isinf
 
 #ifndef INFINITY
 #define INFINITY std::numeric_limits<double>::infinity()
@@ -26,6 +27,7 @@
 namespace lso_cluster {
 
 using namespace std;
+using namespace boost::math;
 using boost::shared_ptr;
 
 // -----------------------------------------------------------------------------

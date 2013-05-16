@@ -8,7 +8,8 @@
 #define HEADER_LSO_CLUSTER_SPARSE_MATRIX
 
 #include <vector>
-#include <stdio.h> //DEBUG
+//#include <stdio.h> //DEBUG
+#include <boost/math/special_functions/fpclassify.hpp> // isnan / isinf
 
 // -----------------------------------------------------------------------------
 // Sparse arrays
@@ -22,6 +23,7 @@
 	
 #else
 	
+    using namespace boost::math;
 	typedef int SparseMatrix_index;
 	
 	class SparseMatrix {
