@@ -6,6 +6,7 @@
 
 #include <octave/oct.h>
 #include <octave/Cell.h>
+#include <octave/parse.h>
 #include "lso_cluster.hpp"
 #include "lso_cluster_impl.hpp"
 #include "argument_parser.hpp"
@@ -41,6 +42,24 @@ vector<int> clustering_from_octave(Matrix const& m) {
 	}
 	return clus;
 }
+
+struct OctaveLossFunction : LossFunction {
+	octave_function* fn;
+	OctaveLossFunction(octave_function* fn) : fn(fn) {}
+	// we give the entire clustering to the octave function
+	virtual bool want_entire_clustering() const {
+		return true;
+	}
+	virtual double loss_entire(vector<clus_t> const& clustering) const {
+		octave_value_list args;
+		args(0) = to_octave(clustering);
+		octave_value_list retval = feval(fn, args, 1);
+		if (retval.length() < 1) {
+			throw std::runtime_error("Missing result in custom loss function");
+		}
+		return retval(0).double_value();
+	}
+};
 
 struct ParamSourceOctave : ParamSource {
   private:
@@ -89,6 +108,18 @@ struct ParamSourceOctave : ParamSource {
 	}
 	virtual SparseMatrix get_matrix_argument() {
 		return next().sparse_matrix_value();
+	}
+	virtual shared_ptr<LossFunction> try_get_loss_function() {
+		// try to interpret the argument as a loss function
+		const octave_value& val = next();
+		if (val.is_function_handle() || val.is_inline_function()) {
+			octave_function* fn = val.function_value();
+			if (!error_state) {
+				return shared_ptr<LossFunction>(new OctaveLossFunction(fn));
+			}
+		}
+		i--; // failed to parse
+		return shared_ptr<LossFunction>();
 	}
 };
 

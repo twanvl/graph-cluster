@@ -28,6 +28,11 @@ struct ArgSource {
 	}
 	virtual vector<clus_t> get_1dvec_argument() = 0;
 	virtual SparseMatrix   get_matrix_argument() = 0;
+	// try to interpret the argument as a loss function
+	// doesn't consume the argument on failure
+	virtual shared_ptr<LossFunction> try_get_loss_function() {
+		return shared_ptr<LossFunction>();
+	}
 };
 struct ParamSource : ArgSource {
 	virtual bool end() = 0;
@@ -83,9 +88,14 @@ struct LsoMainFunction {
 	
 	virtual void add_parameter(string const& key, ArgSource& args) {
 		if (key == "loss" || key == "lossfun" || key == "objective") {
-			vector<double> more;
-			string lossname = args.get_string_argument(&more);
-			lossfun = loss_function_by_name(lossname, more.size(), &more[0]);
+			shared_ptr<LossFunction> fn = args.try_get_loss_function();
+			if (fn) {
+				lossfun = fn;
+			} else {
+				vector<double> more;
+				string lossname = args.get_string_argument(&more);
+				lossfun = loss_function_by_name(lossname, more.size(), &more[0]);
+			}
 		} else if (key == "loss_extra" || key == "extra_loss" || key == "extra_loss_self") {
 			double extra = args.get_double_argument();
 			lossfun = shared_ptr<LossFunction>(new ExtraSelf(lossfun,extra));

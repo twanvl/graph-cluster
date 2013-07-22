@@ -139,9 +139,9 @@ SparseMatrix higher_level_graph(SparseMatrix const& a, vector<clus_t> const& nod
 }
 
 void merge_from_higher_level(vector<clus_t>& node_clus, vector<clus_t> const& clus_superclus) {
-    for (size_t i = 0 ; i < node_clus.size() ; ++i) {
-        node_clus[i] = clus_superclus[node_clus[i]];
-    }
+	for (size_t i = 0 ; i < node_clus.size() ; ++i) {
+		node_clus[i] = clus_superclus[node_clus[i]];
+	}
 }
 
 void higher_level_partition(vector<int>& clus_partition, const vector<int>& node_partition, const vector<clus_t>& node_clus, size_t num_clus) {
@@ -194,15 +194,16 @@ bool next_clustering(vector<clus_t>& clus, int num_clus) {
 // Implementation: initialization stuff
 // -----------------------------------------------------------------------------
 
-Clustering::Clustering(const SparseMatrix& a, const OptimizationParams& params, ClusteringStats* sub_stats, double extra_loss_self)
+Clustering::Clustering(const SparseMatrix& a, const OptimizationParams& params, const Clustering* parent)
 	: params(params)
 	, trace_out(params.trace_out)
 	, neighbors(a.cols())
 	, node_perm(a.cols())
 	, clus_size(a.cols())
-	, extra_loss_self(extra_loss_self)
+	, extra_loss_self(parent ? parent->extra_loss_self : 0.0)
 	, a(a)
 	, node_clus(a.cols())
+	, parent(parent)
 {
 	// parameters that make no sense
 	if (this->params.min_num_clusters < 0) {
@@ -216,10 +217,10 @@ Clustering::Clustering(const SparseMatrix& a, const OptimizationParams& params, 
 	for (size_t i = 0 ; i < node_perm.size() ; ++i) {
 		node_perm[i] = i;
 	}
-	if (sub_stats) {
-		node_stats = *sub_stats;
+	if (parent) {
+		node_stats = parent->clus_stats;
 	} else {
-		init_stats(node_stats, a, NULL, sub_stats);
+		init_stats(node_stats, a);
 	}
 	// initial clustering
 	reset_to_singletons();
@@ -251,7 +252,12 @@ void Clustering::recalc_internal_data() {
 		}
 	}
 	// calculate loss
-	loss = params.lossfun->loss(clus_stats, num_clusters(), &sum_local_loss) + extra_loss_self * clus_stats.total.self / clus_stats.total.degree;
+	if (params.lossfun->want_entire_clustering()) {
+		loss = loss_entire();
+	} else {
+		loss = params.lossfun->loss(clus_stats, num_clusters(), &sum_local_loss);
+	}
+	loss += extra_loss_self * clus_stats.total.self / clus_stats.total.degree;
 }
 
 vector<clus_t> const& Clustering::get_clustering() {
@@ -330,8 +336,16 @@ SingleMove Clustering::best_single_move_for_node(node_t i, bool force_change) co
 		sum_local_after -= params.lossfun->local(clus_stats[c2], clus_stats.total);
 		sum_local_after += params.lossfun->local(clus_stats[c1]-delta1, total_after);
 		sum_local_after += params.lossfun->local(clus_stats[c2]+delta2, total_after);
-		double loss_after = params.lossfun->global(sum_local_after, total_after, num_cluster_after)
-		                  + extra_loss_self * total_after.self / total_after.degree;
+		double loss_after;
+		if (params.lossfun->want_entire_clustering()) {
+			// temporarily change assignment to calculate loss
+			const_cast<Clustering*>(this)->node_clus[i] = c2;
+			loss_after = loss_entire();
+			const_cast<Clustering*>(this)->node_clus[i] = c1;
+		} else {
+			loss_after = params.lossfun->global(sum_local_after, total_after, num_cluster_after);
+		}
+		loss_after += extra_loss_self * total_after.self / total_after.degree;
 		// is it better?
 		if ((loss_after < best_move.loss_after - epsilon) || (force_change && best_move.c2 == c1)) {
 			best_move.c2              = c2;
@@ -393,6 +407,25 @@ void Clustering::update_clus_size(int c, int dsize) {
 		// has become empty
 		clus_size[c] = -static_cast<int>(empty_cluss.size());
 		empty_cluss.push_back(c);
+	}
+}
+
+double Clustering::loss_entire() const {
+	if (parent) {
+		return parent->loss_entire(node_clus);
+	} else {
+		return params.lossfun->loss_entire(node_clus);
+	}
+}
+double Clustering::loss_entire(vector<clus_t> const& clus_superclus) const {
+	vector<clus_t> merged_node_clus(node_clus.size());
+	for (size_t i = 0 ; i < node_clus.size() ; ++i) {
+		merged_node_clus[i] = clus_superclus[node_clus[i]];
+	}
+	if (parent) {
+		return parent->loss_entire(merged_node_clus);
+	} else {
+		return params.lossfun->loss_entire(merged_node_clus);
 	}
 }
 
@@ -525,7 +558,7 @@ bool Clustering::optimize_higher_level(bool always_accept, bool (Clustering::*op
 	// Generate higher level Clustering object
 	if (params.verbosity >= 3) params.debug_out << "  Optimize higher level: " << endl;
 	SparseMatrix b = higher_level_graph(a, node_clus, num_clus);
-	Clustering higher(b, params, &clus_stats, extra_loss_self);
+	Clustering higher(b, params, this);
 	higher_level_partition(higher.node_partition, node_partition, node_clus, num_clus);
 	
 	// check that loss calculation is correct
@@ -747,7 +780,13 @@ void Clustering::verify_clus_stats() const {
 	check(.total.self,"%s.self","total");
 	check(.total.size,"%s.size","total");
 	Doubles new_sl;
-	double new_loss = params.lossfun->loss(cs, num_clusters(), &new_sl) + extra_loss_self * cs.total.self / cs.total.degree;
+	double new_loss;
+	if (params.lossfun->want_entire_clustering()) {
+		new_loss = loss_entire();
+	} else {
+		new_loss = params.lossfun->loss(cs, num_clusters(), &new_sl);
+	}
+	new_loss += extra_loss_self * cs.total.self / cs.total.degree;
 	if (abs(loss - new_loss) > validate_epsilon) {
 		throw mk_logic_error("Incorrect loss update:  %f != %f\n",loss,new_loss);
 	}

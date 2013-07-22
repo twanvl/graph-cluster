@@ -133,6 +133,14 @@ struct LossFunction {
 		if (sum_local_out) *sum_local_out = sum_local;
 		return global(sum_local, stats.total, num_clusters);
 	}
+	
+	// alternatively, but slower, loss can be calculated based on an entire clustering
+	virtual bool want_entire_clustering() const {
+		return false;
+	}
+	virtual double loss_entire(vector<clus_t> const&) const {
+		return 0;
+	}
 };
 
 // -----------------------------------------------------------------------------
@@ -194,7 +202,7 @@ class Neighbors {
 /// Initialize statistics from graph adjacency matrix, and optionally a mapping of nodes to clusters
 /// mapping can be NULL.
 /// sub_stats, if not NULL, is used only to determine the size of single nodes
-void init_stats(ClusteringStats& stats, SparseMatrix const& a, const clus_t* mapping, const ClusteringStats* sub_stats = NULL);
+void init_stats(ClusteringStats& stats, SparseMatrix const& a, const clus_t* mapping = NULL, const ClusteringStats* sub_stats = NULL);
 
 /// Update cluster stats, by moving node i from cluster c1 to cluster c2
 /// node_stats = indivisual node stats (duh)
@@ -333,6 +341,7 @@ class Clustering {
 	// The important stuff
 	const SparseMatrix& a;           // the graph
 	vector<clus_t>  node_clus;       // The clustering, i.e. a mapping node -> cluster
+	const Clustering* parent;        // For higher level clustering
   public:
 	vector<int>     node_partition;  // Optional: only allow clusters that stay within partitions
 	
@@ -349,7 +358,7 @@ class Clustering {
 	vector<clus_t> const& get_clustering();
 	void set_clustering(vector<clus_t> const& clus);
 	
-	Clustering(const SparseMatrix& graph, const OptimizationParams& params, ClusteringStats* sub_stats = NULL, double extra_loss_self = 0.0);
+	Clustering(const SparseMatrix& graph, const OptimizationParams& params, const Clustering* parent = NULL);
 	
 	/// Reset the clustering to each node being in its own cluster
 	void reset_to_singletons();
@@ -414,6 +423,9 @@ class Clustering {
   private:
 	// update clus_size and empty_cluss, by adding delta_size to cluster c
 	void update_clus_size(int c, int delta_size);
+	// calculate clustering for a loss function that wants_entire_clustering
+	double loss_entire() const;
+	double loss_entire(vector<clus_t> const& clus_superclus) const;
 	
 	// Verify that internal data makes sense
 	void verify_invariants() const;
