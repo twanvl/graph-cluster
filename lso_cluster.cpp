@@ -27,12 +27,19 @@ using boost::lexical_cast;
 // -----------------------------------------------------------------------------
 
 template <typename T>
+struct LabeledSparseMatrix : public SparseMatrix {
+	const vector<T> labels;
+	LabeledSparseMatrix(vector<T> const& labels, int nnz)
+		: SparseMatrix(labels.size(), labels.size(), nnz)
+		, labels(labels)
+	{}
+};
+
+template <typename T>
 struct LabeledGraph {
 	map<T,map<T,double> > nodes;
-	void add_nodes(int i) {
-		for (int k = (int)nodes.size() ; k <= i ; ++k) {
-			nodes[k]; // make it exist
-		}
+	void add_nodes(T i) {
+		nodes[i]; // make it exist
 	}
 	void add(T i, T j, double w) {
 		add_nodes(i);
@@ -52,15 +59,16 @@ struct LabeledGraph {
 		}
 		return (int)nnz;
 	}
-	SparseMatrix to_sparse_matrix() const {
+	LabeledSparseMatrix<string> to_sparse_matrix() const {
 		// find unique ids
-		int id = 0;
 		map<T,int> ids;
+		vector<string> labels;
 		for (typename map<T,map<T,double> >::const_iterator it = nodes.begin() ; it != nodes.end() ; ++it) {
-			ids[it->first] = id++;
+			ids[it->first] = (int)labels.size();
+			labels.push_back(lexical_cast<string>(it->first));
 		}
 		// to graph
-		SparseMatrix out(size(), size(), nnz());
+		LabeledSparseMatrix<string> out(labels, nnz());
 		int k = 0;
 		for (typename map<T,map<T,double> >::const_iterator it = nodes.begin() ; it != nodes.end() ; ++it) {
 			out.cidx(ids[it->first]) = k;
@@ -74,18 +82,45 @@ struct LabeledGraph {
 		return out;
 	}
 };
-SparseMatrix load_graph(istream& in) {
-	LabeledGraph<int> graph;
+template <> void LabeledGraph<int>::add_nodes(int i) {
+	// make all nodes [0..i] exist
+	for (int k = (int)nodes.size() ; k <= i ; ++k) {
+		nodes[k]; // make it exist
+	}
+}
+
+enum GraphNodeType {
+	GRAPH_INT, GRAPH_STRING
+};
+
+template <typename T> LabeledSparseMatrix<string> load_graph(istream& in) {
+	LabeledGraph<T> graph;
 	while (in) {
-		int i = -1, j = -1;
+		T i, j;
 		double w = -1;
 		in >> i >> j >> w;
-		if (i != -1 && j != -1 && w != -1) {
+		if (in) {
 			graph.add(i,j,w);
 		}
 	}
 	return graph.to_sparse_matrix();
 }
+LabeledSparseMatrix<string> load_graph(istream& in, GraphNodeType node_type) {
+	if (node_type == GRAPH_INT) return load_graph<int>(in);
+	else return load_graph<string>(in);
+}
+LabeledSparseMatrix<string> load_graph(string const& fn, GraphNodeType node_type) {
+	if (fn == "-") {
+		return load_graph(cin, node_type);
+	} else {
+		ifstream fs(fn.c_str());
+		if (!fs.good()) {
+			throw std::runtime_error("Unable to open file: " + fn);
+		}
+		return load_graph(fs, node_type);
+	}
+}
+
 vector<clus_t> load_clustering(istream& in) {
 	vector<string> labels;
 	while (in) {
@@ -96,18 +131,6 @@ vector<clus_t> load_clustering(istream& in) {
 		}
 	}
 	return clustering_from_array(&labels[0], labels.size());
-}
-
-SparseMatrix load_graph(string const& fn) {
-	if (fn == "-") {
-		return load_graph(cin);
-	} else {
-		ifstream fs(fn.c_str());
-		if (!fs.good()) {
-			throw std::runtime_error("Unable to open file: " + fn);
-		}
-		return load_graph(fs);
-	}
 }
 vector<clus_t> load_clustering(string const& fn) {
 	if (fn == "-") {
@@ -121,20 +144,21 @@ vector<clus_t> load_clustering(string const& fn) {
 	}
 }
 
-void print_clustering(ostream& out, vector<clus_t> const& clustering) {
+void print_clustering(ostream& out, vector<string> const& labels, vector<clus_t> const& clustering) {
 	for (size_t i = 0 ; i < clustering.size() ; ++i) {
+		if (i < labels.size()) out << labels[i] << "\t";
 		out << clustering[i] << endl;
 	}
 }
-void print_clustering(std::string const& fn, vector<clus_t> const& clustering) {
+void print_clustering(std::string const& fn, vector<string> const& labels, vector<clus_t> const& clustering) {
 	if (fn == "-" || fn.empty()) {
-		print_clustering(cout, clustering);
+		print_clustering(cout, labels, clustering);
 	} else {
 		ofstream fs(fn.c_str());
 		if (!fs.good()) {
 			throw std::runtime_error("Unable to open file: " + fn);
 		}
-		print_clustering(fs, clustering);
+		print_clustering(fs, labels, clustering);
 	}
 }
 
@@ -154,28 +178,43 @@ struct ParamSourceCommandline : ParamSource {
 		}
 	}
   public:
+	GraphNodeType graph_node_type;
+	
 	ParamSourceCommandline(int argc, const char** argv)
-		: argc(argc), i(0), argv(argv)
+		: argc(argc), i(0), argv(argv), graph_node_type(GRAPH_STRING)
 	{}
 	virtual bool end() {
 		return i >= argc;
 	}
-	virtual string get_parameter_name() {
+	virtual string try_get_parameter_name() {
 		// parameters are indicated by "--OPT"
-		const char* opt = next();
+		if (i >= argc) return "";
+		const char* opt = argv[i];
 		if (opt[0] == '-' && opt[1] == '-') {
 			// negated boolean flags
 			if (opt[2] == 'n' && opt[3] == 'o' && opt[4] == '-') {
 				return opt+5;
 			}
 			// normal arguments
+			next();
 			return opt+2;
 		} else if (opt[0] == '-' && opt[1] == 'o' && opt[2] == 0) {
+			next();
 			return "out";
 		} else if (opt[0] == '-' && opt[1] == 'q' && opt[2] == 0) {
+			next();
 			return "quiet";
 		} else {
+			return "";
+		}
+	}
+	virtual string get_parameter_name() {
+		// parameters are indicated by "--OPT"
+		string param = try_get_parameter_name();
+		if (param.empty()) {
 			throw std::invalid_argument("Expected an optional parameter name ('--something')");
+		} else {
+			return param;
 		}
 	}
 	virtual string get_string_argument(vector<double>* more_out = 0) {
@@ -213,7 +252,10 @@ struct ParamSourceCommandline : ParamSource {
 		return load_clustering(next());
 	}
 	virtual SparseMatrix get_matrix_argument() {
-		return load_graph(next());
+		return get_labeled_matrix_argument();
+	}
+	virtual LabeledSparseMatrix<string> get_labeled_matrix_argument() {
+		return load_graph(next(), graph_node_type);
 	}
 };
 
@@ -221,6 +263,8 @@ struct LsoMainFunctionCommandLine : LsoMainFunction {
 	// extra options
 	string output_file;
 	bool quiet;
+	// labels of the graph
+	vector<string> labels;
 	
 	LsoMainFunctionCommandLine()
 		: LsoMainFunction(cerr)
@@ -232,9 +276,28 @@ struct LsoMainFunctionCommandLine : LsoMainFunction {
 			output_file = args.get_string_argument();
 		} else if (key == "quiet") {
 			quiet = true;
+		} else if (key == "numeric") {
+			static_cast<ParamSourceCommandline&>(args).graph_node_type = GRAPH_INT;
 		} else {
 			LsoMainFunction::add_parameter(key,args);
 		}
+	}
+	
+	virtual void add_all_parameters(ParamSource& args) {
+		ParamSourceCommandline& pargs = static_cast<ParamSourceCommandline&>(args);
+		// arguments with "-" are optional parameters, they can appear before the graph filename
+		while (!pargs.end()) {
+			string key = pargs.try_get_parameter_name();
+			if (key.empty()) break; // doesn't start with "-"
+			normalize_key(key);
+			add_parameter(key, pargs);
+		}
+		// first non "-" parameter is the graph file
+		LabeledSparseMatrix<string> lgraph = pargs.get_labeled_matrix_argument();
+		graph = lgraph;
+		labels = lgraph.labels;
+		// then come the optional parameters
+		add_optional_parameters(pargs);
 	}
 };
 
@@ -263,7 +326,7 @@ int main(int argc, char const** argv) {
 			cerr << "loss: " << runner.loss << endl;
 			cerr << "num clusters: " << runner.num_clusters << endl;
 		}
-		print_clustering(runner.output_file, runner.clustering);
+		print_clustering(runner.output_file, runner.labels, runner.clustering);
 		
 	} catch (std::exception const& e) {
 		cerr << e.what() << endl;

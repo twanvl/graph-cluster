@@ -75,10 +75,14 @@ struct LsoMainFunction {
 	{}
 	
 	// Argument parsing
-	void add_all_parameters(ParamSource& args) {
+	virtual void add_all_parameters(ParamSource& args) {
 		// first parameter is the graph
 		graph = args.get_matrix_argument();
 		// then come the optional parameters
+		add_optional_parameters(args);
+	}
+	
+	virtual void add_optional_parameters(ParamSource& args) {
 		while (!args.end()) {
 			string key = args.get_parameter_name();
 			normalize_key(key);

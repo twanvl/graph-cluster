@@ -224,10 +224,15 @@ Graphs should be given on in a text file whos name is passed as the first argume
 
      <from> <to> <weight>
 
-Where `<from>` and `<to>` are non-negative integer node identifiers. The first node is node 0, the number of nodes will be set to 1 plus the largest node identifier.
-If needed, you can add edges `n n 0` to force the graph to have `n+1` nodes.
+Where `<from>` and `<to>` are node identifiers. These are either strings or integers from `0...n`. Only nodes that have edges will be included in the graph. If needed, you can add edges `<n> <n> 0` to force the graph to contain a node `n`.
+The graph is made symmetric, i.e. the reversed edges `<to> <from> <weight>` are also added.
 
-The output is written as text to stdout, where each line gives a cluster label. With `-o <filename>` the found clustering is directed to a file instead.
+The output is written as text to stdout, with `-o <filename>` the found clustering is directed to a file instead.
+Each line of the output will have the format
+
+    <node> <clusterid>
+
+Nodes will be listed in alphabetical order, or in numerical order if the `--numeric` flag is given.
 
 Other parameters are specified as `--parameter value`, with the same name as the matlab version parameters. For example `--loss infomap` uses the infomap loss function.
 
