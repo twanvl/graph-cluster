@@ -159,6 +159,9 @@ Some of the supported loss functions are:
 * `'w-log-v'`,
   `loss = sum_c (w_c/m * log(v_c) )`
 
+* `num`
+  `loss = |C|`: Minimize the number of clusters, this leads to finding the connected components.
+
 See `loss_functions.hpp` for the full list.
 Some loss functions have parameters, these are passed as a cell array where the first element is the name.
 
