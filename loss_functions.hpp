@@ -621,6 +621,18 @@ struct ExtraNoSingleton : public LossFunction {
 		return lossfun->global(sum_local, total, num_clusters);
 	}
 };
+// note: only works for additive loss functions
+struct ExtraMaxSize : public LossFunction {
+	shared_ptr<LossFunction> lossfun;
+	double max_size;
+	double amount;
+	ExtraMaxSize(shared_ptr<LossFunction>& lossfun, double max_size = 0, double amount = 1.0) : lossfun(lossfun), max_size(max_size), amount(amount) {}
+	Doubles local(Stats const& clus, Stats const& total) const {
+		Doubles l = lossfun->local(clus, total);
+		l[0] += max(clus.size - max_size, 0.) * amount;
+		return l;
+	}
+};
 
 // explicity set the volume of the graph
 struct WithTotalVolume : public LossFunction {

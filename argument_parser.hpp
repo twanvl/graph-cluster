@@ -109,6 +109,9 @@ struct LsoMainFunction {
 		} else if (key == "extra_no_singleton") {
 			double amount = args.get_double_argument();
 			lossfun = shared_ptr<LossFunction>(new ExtraNoSingleton(lossfun,amount));
+		} else if (key == "max_cluster_size") {
+			double max_size = args.get_double_argument();
+			lossfun = shared_ptr<LossFunction>(new ExtraMaxSize(lossfun,max_size));
 		} else if (key == "total_volume") {
 			double vol = args.get_double_argument();
 			lossfun = shared_ptr<LossFunction>(new WithTotalVolume(lossfun,vol));

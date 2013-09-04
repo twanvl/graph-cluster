@@ -80,6 +80,9 @@ Optional parameters regarding the objective:
  * `'max_num_cluster', n`
    Force the solution to have at most the given number of clusters.
    
+ * `'max_cluster_size', n`
+   Allow clusters to have at most n nodes.
+
 Optional parameters about internal algorithm details, you only need these if you know what you are doing:
 
  * `'seed', random_seed`
