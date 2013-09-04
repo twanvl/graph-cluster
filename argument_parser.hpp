@@ -149,6 +149,8 @@ struct LsoMainFunction {
 			params.optimize_num_clusters_with_outer_loop = args.get_bool_argument();
 		} else if (key == "optimize_globally_best_moves" || key == "optimize_globally_best_move") {
 			params.optimize_globally_best_moves = args.get_bool_argument();
+		} else if (key == "optimize_swap_moves" || key == "swap_moves" || key == "optimize_with_swap_moves") {
+			params.optimize_with_swap_moves = args.get_bool_argument();
 		} else if (key == "seed") {
 			seed = args.get_int_argument();
 		

@@ -222,6 +222,15 @@ struct SingleMove {
 	Doubles sum_local_after;
 };
 
+/// Move node i from c1 to c2, move node j from c2 to c1.
+struct SwapMove {
+	node_t i, j;
+	double weight_ij_c1; // number of edges between i and c1, minus edges between j and c1
+	double weight_ij_c2;
+	double loss_after;
+	Doubles sum_local_after;
+};
+
 // -----------------------------------------------------------------------------
 // Utility functions: working with multiple levels
 // -----------------------------------------------------------------------------
@@ -289,6 +298,7 @@ struct OptimizationParams {
 	bool optimize_higher_level;
 	bool optimize_num_clusters_with_outer_loop;
 	bool optimize_globally_best_moves;
+	bool optimize_with_swap_moves;
 	bool use_loss_tweak;
 	// output
 	int verbosity;
@@ -309,6 +319,7 @@ struct OptimizationParams {
 		, optimize_higher_level(true)
 		, optimize_num_clusters_with_outer_loop(true)
 		, optimize_globally_best_moves(false)
+		, optimize_with_swap_moves(false)
 		, use_loss_tweak(true)
 		, verbosity(0)
 		, debug_out(debug_out)
@@ -379,7 +390,7 @@ class Clustering {
 	/// Return true if the clustering has changed (improved).
 	bool optimize_all_levels();
 	
-	/// Optimize by greedyliy moving single nodes around.
+	/// Optimize by greedyliy moving/swapping single nodes around.
 	/// Repeated until convergence.
 	bool optimize_single_moves();
 	// Go over nodes once, in a random order, and try to move to neighboring cluster
@@ -388,6 +399,10 @@ class Clustering {
 	// This function is the workhorse of the optimizer.
 	// All actual changes to the clustering happen here
 	bool optimize_single_move_for_node(node_t i);
+	
+	// same as optimize_single_moves_pass, but with SwapMoves instead of SingleMoves
+	bool optimize_swap_moves_pass();
+	bool optimize_swap_move_for_node(node_t i);
 	
 	// Perform the single globally best move
 	bool optimize_best_single_move_pass();
@@ -419,6 +434,9 @@ class Clustering {
 	SingleMove best_single_move(bool force_change = false) const;
 	/// Perform a single move
 	bool perform_single_move(const SingleMove& move);
+	
+	SwapMove best_swap_move_for_node(node_t i) const;
+	bool perform_swap_move(const SwapMove& move);
 	
   private:
 	// update clus_size and empty_cluss, by adding delta_size to cluster c

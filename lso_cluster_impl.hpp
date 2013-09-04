@@ -287,7 +287,7 @@ SingleMove Clustering::best_single_move(bool force_change) const {
 }
 
 SingleMove Clustering::best_single_move_for_node(node_t i, bool force_change) const {
-	int c1 = node_clus[i]; // current cluster of i
+	clus_t c1 = node_clus[i]; // current cluster of i
 	// find neighboring clusters, and sum of weights to them
 	// i.e. set neighbors.weight(c) = sum of edges from i to any node in c
 	neighbors.clear();
@@ -360,6 +360,80 @@ SingleMove Clustering::best_single_move_for_node(node_t i, bool force_change) co
 	return best_move;
 }
 
+SwapMove Clustering::best_swap_move_for_node(node_t i) const {
+	clus_t c1 = node_clus[i];
+	
+	// count edges from i to neighboring clusters
+	neighbors.clear();
+	neighbors.add(c1, -node_stats[i].self); // don't count the self loops for node i
+	for (int j_it = a.cidx(i) ; j_it < a.cidx(i+1) ; ++j_it) {
+		int j = a.ridx(j_it);
+		if (i != j && (node_partition.empty() || node_partition[j] == node_partition[i])) {
+			neighbors.add(node_clus[j], a.data(j_it));
+		}
+	}
+	
+	// default best move: swap i with itself
+	double weight_i_c1 = neighbors.weight(c1);
+	SwapMove best_move;
+	best_move.i  = best_move.j = i;
+	best_move.weight_ij_c1 = best_move.weight_ij_c2 = 0;
+	best_move.loss_after = loss;
+	best_move.sum_local_after = sum_local_loss;
+    
+	// for every neighbor of i in another cluster...
+	for (int j_it = a.cidx(i) ; j_it < a.cidx(i+1) ; ++j_it) {
+		int j = a.ridx(j_it);
+		int c2 = node_clus[j];
+		if (c2 == c1) continue;
+		// consider swapping i with j
+		// find edges j--c1 and j--c2
+		double weight_j_c1 = 0.;
+		double weight_j_c2 = 0.;
+		for (int k_it = a.cidx(j) ; k_it < a.cidx(j+1) ; ++k_it) {
+			int k = a.ridx(k_it);
+			if (k == j) {
+				// don't count self-loops
+			} else if (node_clus[k] == c1) {
+				weight_j_c1 += a.data(k_it);
+			} else if (node_clus[k] == c2) {
+				weight_j_c2 += a.data(k_it);
+			}
+		}
+		// How would the loss change after swapping clustering of i and j?
+		double weight_i_c2 = neighbors.weight(c2);
+		Stats delta1 = node_stats[i] - node_stats[j]; delta1.self += 2.0 * (weight_i_c1 - weight_j_c1);
+		Stats delta2 = node_stats[i] - node_stats[j]; delta2.self += 2.0 * (weight_i_c2 - weight_j_c2);
+		Stats total_after = clus_stats.total - delta1 + delta2;
+		Doubles sum_local_after = sum_local_loss;
+		sum_local_after -= params.lossfun->local(clus_stats[c1], clus_stats.total);
+		sum_local_after -= params.lossfun->local(clus_stats[c2], clus_stats.total);
+		sum_local_after += params.lossfun->local(clus_stats[c1]-delta1, total_after);
+		sum_local_after += params.lossfun->local(clus_stats[c2]+delta2, total_after);
+		double loss_after;
+		if (params.lossfun->want_entire_clustering()) {
+			// temporarily change assignment to calculate loss
+			const_cast<Clustering*>(this)->node_clus[i] = c2;
+			const_cast<Clustering*>(this)->node_clus[j] = c1;
+			loss_after = loss_entire();
+			const_cast<Clustering*>(this)->node_clus[i] = c1;
+			const_cast<Clustering*>(this)->node_clus[j] = c2;
+		} else {
+			loss_after = params.lossfun->global(sum_local_after, total_after, num_clusters());
+		}
+		loss_after += extra_loss_self * total_after.self / total_after.degree;
+		// is it better?
+		if (loss_after < best_move.loss_after - epsilon) {
+			best_move.j               = j;
+			best_move.weight_ij_c1    = weight_i_c1 - weight_j_c1;
+			best_move.weight_ij_c2    = weight_i_c2 - weight_j_c2;
+			best_move.loss_after      = loss_after;
+			best_move.sum_local_after = sum_local_after;
+		}
+	}
+	return best_move;
+}
+
 bool Clustering::perform_single_move(const SingleMove& move) {
 	if (move.c1 == move.c2) return false;
 	
@@ -389,6 +463,25 @@ bool Clustering::perform_single_move(const SingleMove& move) {
 		if (!node_partition.empty()) params.debug_out << " in " << node_partition[move.c2];
 		params.debug_out << " loss " << setprecision(12) << move.loss_after << " in " << num_clusters() << " clusters" << endl;
 	}
+	return true;
+}
+
+bool Clustering::perform_swap_move(const SwapMove& move) {
+	if (node_clus[move.i] == node_clus[move.j]) return false;
+	
+	// update stats
+	Stats delta1 = node_stats[move.i] - node_stats[move.j]; delta1.self += 2.0 * move.weight_ij_c1;
+	Stats delta2 = node_stats[move.i] - node_stats[move.j]; delta2.self += 2.0 * move.weight_ij_c2;
+	clus_stats[node_clus[move.i]] -= delta1;
+	clus_stats[node_clus[move.j]] += delta2;
+	clus_stats.total -= delta1;
+	clus_stats.total += delta2;
+	// update loss
+	sum_local_loss = move.sum_local_after;
+	loss = move.loss_after;
+	// update cluster assignment
+	swap(node_clus[move.i], node_clus[move.j]);
+	
 	return true;
 }
 
@@ -496,6 +589,9 @@ bool Clustering::optimize_single_moves() {
 		} else {
 			changes = optimize_single_moves_pass();
 		}
+		if (!changes && params.optimize_with_swap_moves) {
+			changes = optimize_swap_moves_pass();
+		}
 		iteration++;
 		if (params.verbosity >= 5) {
 			params.debug_out << "    After iteration " << iteration << " loss is " << setprecision(12) << loss << " in " << num_clusters() << " clusters" << endl;
@@ -548,6 +644,30 @@ bool Clustering::optimize_best_single_move_pass() {
 bool Clustering::perform_best_single_forced_move() {
 	SingleMove move = best_single_move(true);
 	return perform_single_move(move);
+}
+
+bool Clustering::optimize_swap_moves_pass() {
+	if (params.check_invariants) verify_invariants();
+	bool changes = false;
+	std::random_shuffle(node_perm.begin(), node_perm.end());
+	for (vector<int>::const_iterator i_it = node_perm.begin() ; i_it != node_perm.end() ; ++i_it) {
+		OCTAVE_QUIT;
+		if (optimize_swap_move_for_node(*i_it)) changes = true;
+	}
+	if (changes) {
+		// it is important to recalculate the loss, otherwise we accumulate numerical errors
+		recalc_internal_data();
+	}
+	return changes;
+}
+
+bool Clustering::optimize_swap_move_for_node(int i) {
+	SwapMove move = best_swap_move_for_node(i);
+	if (move.loss_after < loss - epsilon) {
+		return perform_swap_move(move);
+	} else {
+		return false;
+	}
 }
 
 bool Clustering::optimize_higher_level(bool always_accept, bool (Clustering::*opt)()) {
