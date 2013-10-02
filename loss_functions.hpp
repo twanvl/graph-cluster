@@ -83,6 +83,16 @@ struct InfomapTweak : public LossFunction {
 	}
 };
 
+struct Conductance : public LossFunction {
+	Doubles local(Stats const& clus, Stats const& total) const {
+		// conductance(S) = e_S / min(v_S, v_!S)
+		double denom = min(clus.degree, total.degree - clus.degree);
+		if (clus.degree < 1e-6) return 0.;
+		if (denom < 1e-6) return INFINITY;
+		return clus.exit() / denom;
+	}
+};
+
 struct SelfLogDegree : public LossFunction {
 	Doubles local(Stats const& clus, Stats const& total) const {
 		if (clus.degree < 1e-6) return 0;
@@ -557,11 +567,12 @@ struct ConstantPenalty : public LossFunction {
 };
 struct MonotonicModularity : public LossFunction {
 	double m;
-	MonotonicModularity(double m = 1) : m(m) {}
+	double g;
+	MonotonicModularity(double m = 1, double g = 2) : m(m), g(g) {}
 	Doubles local(Stats const& clus, Stats const& total) const {
 		double w = clus.self / total.degree;
 		double v = clus.degree / total.degree;
-		double n = m + 2*v;
+		double n = m + g*v;
 		return -w/n + sqr(v/n);
 	}
 };
@@ -626,7 +637,7 @@ struct ExtraMaxSize : public LossFunction {
 	shared_ptr<LossFunction> lossfun;
 	double max_size;
 	double amount;
-	ExtraMaxSize(shared_ptr<LossFunction>& lossfun, double max_size = 0, double amount = 1.0) : lossfun(lossfun), max_size(max_size), amount(amount) {}
+	ExtraMaxSize(shared_ptr<LossFunction>& lossfun, double max_size = 0, double amount = 1e10) : lossfun(lossfun), max_size(max_size), amount(amount) {}
 	Doubles local(Stats const& clus, Stats const& total) const {
 		Doubles l = lossfun->local(clus, total);
 		l[0] += max(clus.size - max_size, 0.) * amount;
@@ -666,6 +677,8 @@ shared_ptr<LossFunction> loss_function_by_name(std::string const& name, size_t a
 		return shared_ptr<LossFunction>(new Infomap);
 	} else if (name == "infomap_paper" || name == "imp") {
 		return shared_ptr<LossFunction>(new InfomapPaper);
+	} else if (name == "cond" || name == "conductance") {
+		return shared_ptr<LossFunction>(new Conductance);
 	} else if (name == "self log degree" || name == "sld" || name == "w-log-v") {
 		return shared_ptr<LossFunction>(new SelfLogDegree);
 	} else if (name == "self log self" || name == "sls") {
@@ -805,6 +818,7 @@ shared_ptr<LossFunction> loss_function_by_name(std::string const& name, size_t a
 	} else if (name == "mom") {
 		MonotonicModularity* lossfun = new MonotonicModularity;
 		if (argc > 0) lossfun->m = argv[0];
+		if (argc > 1) lossfun->g = argv[1];
 		return shared_ptr<LossFunction>(lossfun);
 	} else {
 		throw std::invalid_argument("Unrecognized loss function: '" + name + "'");
