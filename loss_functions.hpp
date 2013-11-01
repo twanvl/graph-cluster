@@ -402,20 +402,30 @@ struct NormalGivenDegree_wrong : public LossFunction {
 };
 
 struct PoissonGivenDegree : public LossFunction {
+	double self_loops;
+	double prior_a, prior_b;
+	PoissonGivenDegree() : self_loops(1.0), prior_a(1.0), prior_b(1.0) {}
 	Doubles local(Stats const& clus, Stats const& total) const {
-		return clus.degree * clus.degree;
+		return sqr(clus.degree + self_loops*clus.size);
 	}
 	double global(Doubles const& within_deg_deg, Stats const& total, int num_clusters) const {
 		// Assume that edge count has poisson distribution with rate proportional to di*dj
 		// q(G,C) = ∑{i,j} ci==cj ? Log[(α*di*dj)^Eij/Eij! * Exp[-α*di*dj]]
 		//                        : Log[(β*di*dj)^Eij/Eij! * Exp[-β*di*dj]]
 		//        = ∑{i,j} ci==cj ? Eij*Log[α] - α*di*dj : ...
-		double between_deg_deg = total.degree * total.degree - within_deg_deg[0]; // ∑ di*dj for between
-		double a = total.self   / (within_deg_deg[0] + 1e-16) + 1e-16;
-		double b = total.exit() / (between_deg_deg + 1e-16)   + 1e-16;
+		double between_deg_deg = sqr(total.degree + self_loops*total.size) - within_deg_deg[0]; // ∑ di*dj for between
+		// Note that the first merging of two singletons will not happen if we don't have self loops
+		// therefore, add them here
+		double within  = total.self   + self_loops*total.size;
+		double between = total.degree - total.self; // + size - size
+		// calculate a and b to maximize likelihood
+		// do some smoothing to prevent div-by-0 and log(0),
+		// this is probably some kind of prior (gamma?).
+		double a = (within  + prior_a) / (within_deg_deg[0] + prior_b);
+		double b = (between + prior_a) / (between_deg_deg   + prior_b);
 		// loss
-		double logp = total.self   * log(a) - a * within_deg_deg[0]
-		            + total.exit() * log(b) - b * between_deg_deg;
+		double logp = within  * log(a) - a * within_deg_deg[0]
+		            + between * log(b) - b * between_deg_deg;
 		return -logp;
 	}
 };
@@ -768,7 +778,11 @@ shared_ptr<LossFunction> loss_function_by_name(std::string const& name, size_t a
 	} else if (name == "pbm4") {
 		return shared_ptr<LossFunction>(new PBM4);
 	} else if (name == "poisson" || name == "pgd") {
-		return shared_ptr<LossFunction>(new PoissonGivenDegree);
+		PoissonGivenDegree* lossfun = new PoissonGivenDegree;
+		if (argc > 0) lossfun->self_loops = argv[0];
+		if (argc > 1) lossfun->prior_a = argv[1];
+		if (argc > 2) lossfun->prior_b = argv[2];
+		return shared_ptr<LossFunction>(lossfun);
 	} else if (name == "num" || name == "num+") {
 		return shared_ptr<LossFunction>(new NumClusPlus);
 	} else if (name == "num-") {
