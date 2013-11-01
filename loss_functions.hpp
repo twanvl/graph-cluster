@@ -401,6 +401,25 @@ struct NormalGivenDegree_wrong : public LossFunction {
 	}
 };
 
+struct PoissonGivenDegree : public LossFunction {
+	Doubles local(Stats const& clus, Stats const& total) const {
+		return clus.degree * clus.degree;
+	}
+	double global(Doubles const& within_deg_deg, Stats const& total, int num_clusters) const {
+		// Assume that edge count has poisson distribution with rate proportional to di*dj
+		// q(G,C) = ∑{i,j} ci==cj ? Log[(α*di*dj)^Eij/Eij! * Exp[-α*di*dj]]
+		//                        : Log[(β*di*dj)^Eij/Eij! * Exp[-β*di*dj]]
+		//        = ∑{i,j} ci==cj ? Eij*Log[α] - α*di*dj : ...
+		double between_deg_deg = total.degree * total.degree - within_deg_deg[0]; // ∑ di*dj for between
+		double a = total.self   / (within_deg_deg[0] + 1e-16) + 1e-16;
+		double b = total.exit() / (between_deg_deg + 1e-16)   + 1e-16;
+		// loss
+		double logp = total.self   * log(a) - a * within_deg_deg[0]
+		            + total.exit() * log(b) - b * between_deg_deg;
+		return -logp;
+	}
+};
+
 struct NumClusPlus : public LossFunction {
 	Doubles local(Stats const& clus, Stats const& total) const {
 		return clus.size > 0 ? 1 : 0;
@@ -748,6 +767,8 @@ shared_ptr<LossFunction> loss_function_by_name(std::string const& name, size_t a
 		return shared_ptr<LossFunction>(new PBM3);
 	} else if (name == "pbm4") {
 		return shared_ptr<LossFunction>(new PBM4);
+	} else if (name == "poisson" || name == "pgd") {
+		return shared_ptr<LossFunction>(new PoissonGivenDegree);
 	} else if (name == "num" || name == "num+") {
 		return shared_ptr<LossFunction>(new NumClusPlus);
 	} else if (name == "num-") {
