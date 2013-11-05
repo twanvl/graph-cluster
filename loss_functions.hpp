@@ -10,6 +10,7 @@
 #include "lso_cluster.hpp"
 #include <memory>
 #include <stdexcept>
+#include <boost/math/special_functions/gamma.hpp>
 
 namespace lso_cluster {
 
@@ -409,6 +410,7 @@ struct PoissonGivenDegree : public LossFunction {
 		return sqr(clus.degree + self_loops*clus.size);
 	}
 	double global(Doubles const& within_deg_deg, Stats const& total, int num_clusters) const {
+		// Assume a flat prior over clusterings
 		// Assume that edge count has poisson distribution with rate proportional to di*dj
 		// q(G,C) = ∑{i,j} ci==cj ? Log[(α*di*dj)^Eij/Eij! * Exp[-α*di*dj]]
 		//                        : Log[(β*di*dj)^Eij/Eij! * Exp[-β*di*dj]]
@@ -427,6 +429,23 @@ struct PoissonGivenDegree : public LossFunction {
 		double logp = within  * log(a) - a * within_deg_deg[0]
 		            + between * log(b) - b * between_deg_deg;
 		return -logp;
+	}
+};
+
+// put a Chinese Restaurant Process prior instead of a flat prior
+template <typename Base>
+struct CRPPrior : public Base {
+	double strength;
+	CRPPrior() : strength(1) {}
+	Doubles local(Stats const& clus, Stats const& total) const {
+		if (clus.size <= 1e-6) return 0;
+		Doubles out = Base::local(clus,total);
+		out[1] = lgamma(clus.size);
+		return out;
+	}
+	double global(Doubles const& local, Stats const& total, int num_clusters) const {
+		double loss = Base::global(local, total, num_clusters);
+		return loss - strength * (local[1] - lgamma(total.size+1));
 	}
 };
 
@@ -782,6 +801,13 @@ shared_ptr<LossFunction> loss_function_by_name(std::string const& name, size_t a
 		if (argc > 0) lossfun->self_loops = argv[0];
 		if (argc > 1) lossfun->prior_a = argv[1];
 		if (argc > 2) lossfun->prior_b = argv[2];
+		return shared_ptr<LossFunction>(lossfun);
+	} else if (name == "crp-poisson" || name == "crp") {
+		CRPPrior<PoissonGivenDegree>* lossfun = new CRPPrior<PoissonGivenDegree>;
+		if (argc > 0) lossfun->strength = argv[0];
+		if (argc > 1) lossfun->self_loops = argv[1];
+		if (argc > 2) lossfun->prior_a = argv[2];
+		if (argc > 3) lossfun->prior_b = argv[3];
 		return shared_ptr<LossFunction>(lossfun);
 	} else if (name == "num" || name == "num+") {
 		return shared_ptr<LossFunction>(new NumClusPlus);
