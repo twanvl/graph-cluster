@@ -219,8 +219,14 @@ Clustering::Clustering(const SparseMatrix& a, const OptimizationParams& params, 
 	}
 	if (parent) {
 		node_stats = parent->clus_stats;
+		node_sum_local_loss = parent->node_sum_local_loss;
 	} else {
 		init_stats(node_stats, a);
+		// calculate sum of local for the individual nodes
+		node_sum_local_loss = 0.;
+		for (size_t i = 0 ; i < node_clus.size() ; ++i) {
+			node_sum_local_loss += params.lossfun->local(node_stats[i], node_stats.total);
+		}
 	}
 	// initial clustering
 	reset_to_singletons();
@@ -255,7 +261,7 @@ void Clustering::recalc_internal_data() {
 	if (params.lossfun->want_entire_clustering()) {
 		loss = loss_entire();
 	} else {
-		loss = params.lossfun->loss(clus_stats, num_clusters(), &sum_local_loss);
+		loss = params.lossfun->loss(clus_stats, num_clusters(), &sum_local_loss, node_sum_local_loss);
 	}
 	loss += extra_loss_self * clus_stats.total.self / clus_stats.total.degree;
 }
@@ -343,7 +349,7 @@ SingleMove Clustering::best_single_move_for_node(node_t i, bool force_change) co
 			loss_after = loss_entire();
 			const_cast<Clustering*>(this)->node_clus[i] = c1;
 		} else {
-			loss_after = params.lossfun->global(sum_local_after, total_after, num_cluster_after);
+			loss_after = params.lossfun->global(sum_local_after, node_sum_local_loss, total_after, num_cluster_after);
 		}
 		loss_after += extra_loss_self * total_after.self / total_after.degree;
 		// is it better?
@@ -419,7 +425,7 @@ SwapMove Clustering::best_swap_move_for_node(node_t i) const {
 			const_cast<Clustering*>(this)->node_clus[i] = c1;
 			const_cast<Clustering*>(this)->node_clus[j] = c2;
 		} else {
-			loss_after = params.lossfun->global(sum_local_after, total_after, num_clusters());
+			loss_after = params.lossfun->global(sum_local_after, node_sum_local_loss, total_after, num_clusters());
 		}
 		loss_after += extra_loss_self * total_after.self / total_after.degree;
 		// is it better?
@@ -904,7 +910,7 @@ void Clustering::verify_clus_stats() const {
 	if (params.lossfun->want_entire_clustering()) {
 		new_loss = loss_entire();
 	} else {
-		new_loss = params.lossfun->loss(cs, num_clusters(), &new_sl);
+		new_loss = params.lossfun->loss(cs, num_clusters(), &new_sl, node_sum_local_loss);
 	}
 	new_loss += extra_loss_self * cs.total.self / cs.total.degree;
 	if (abs(loss - new_loss) > validate_epsilon) {

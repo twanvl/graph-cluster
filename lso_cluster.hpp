@@ -120,18 +120,18 @@ struct LossFunction {
 	virtual Doubles local(Stats const& clus, Stats const& total) const {
 		return 0.;
 	}
-	virtual double global(Doubles const& sum_local, Stats const& total, int num_clusters) const {
+	virtual double global(Doubles const& sum_local, Doubles const& node_local, Stats const& total, int num_clusters) const {
 		return sum_local[0];
 	}
 	
 	/// Calculate loss for the given clustering statistics
-	double loss(const ClusteringStats& stats, int num_clusters, Doubles* sum_local_out = NULL) const {
+	double loss(const ClusteringStats& stats, int num_clusters, Doubles* sum_local_out, Doubles const& node_local) const {
 		Doubles sum_local;
 		for (size_t i = 0 ; i < stats.size() ; ++i) {
 			if (stats[i].size > 0) sum_local += local(stats[i], stats.total);
 		}
 		if (sum_local_out) *sum_local_out = sum_local;
-		return global(sum_local, stats.total, num_clusters);
+		return global(sum_local, node_local, stats.total, num_clusters);
 	}
 	
 	// alternatively, but slower, loss can be calculated based on an entire clustering
@@ -347,6 +347,7 @@ class Clustering {
 	ClusteringStats node_stats;      // for each node: its size, volume, within weight
 	ClusteringStats clus_stats;      // for each cluster: 
 	Doubles         sum_local_loss;  // sum of lossfun->local for clusters
+	Doubles         node_sum_local_loss; // sum of lossfun->local for the nodes
 	double          extra_loss_self; // add extra_loss_self*clus_stats.total.self to the loss, this is used for getting a certain number of clusters
 	double          loss;
 	// The important stuff

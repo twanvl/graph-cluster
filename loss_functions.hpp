@@ -52,7 +52,7 @@ struct Infomap : public LossFunction {
 	Doubles local(Stats const& clus, Stats const& total) const {
 		return plogp((clus.degree + clus.exit()) / total.degree) - 2.0 * plogp(clus.exit() / total.degree);
 	}
-	double global(Doubles const& sum_local, Stats const& total, int num_clusters) const {
+	double global(Doubles const& sum_local, Doubles const& node_local, Stats const& total, int num_clusters) const {
 		// plogp_node_degree = sum over nodes i, plogp(degree(i) / total.degree)
 		// can't calculate this, but since it is a global constant, it doesn't matter
 		double plogp_node_degree = 0;
@@ -68,7 +68,7 @@ struct InfomapPaper : public LossFunction {
 		double e = clus.exit() / clus.degree;
 		return Doubles(plogp(d), -d * (plogp(s) + plogp(e)));
 	}
-	double global(Doubles const& sum_local, Stats const& total, int num_clusters) const {
+	double global(Doubles const& sum_local, Doubles const& node_local, Stats const& total, int num_clusters) const {
 		// plogp_node_degree = sum over nodes i, plogp(degree(i) / total.degree)
 		double plogp_node_degree = 0.;
 		double plogp_degree  = sum_local[0];
@@ -204,7 +204,7 @@ struct SelfLogDegreeGlobal : public LossFunction {
 	Doubles local(Stats const& clus, Stats const& total) const {
 		return plogp(clus.degree / total.degree);
 	}
-	double global(Doubles const& sum_deg_log_deg, Stats const& total, int num_clusters) const {
+	double global(Doubles const& sum_deg_log_deg, Doubles const& node_local, Stats const& total, int num_clusters) const {
 		return total.self / total.degree * sum_deg_log_deg[0];
 	}
 };
@@ -213,7 +213,7 @@ struct SelfLogDegreeGlobalSqr : public LossFunction {
 	Doubles local(Stats const& clus, Stats const& total) const {
 		return sqr(clus.degree / total.degree);
 	}
-	double global(Doubles const& sum_deg_deg, Stats const& total, int num_clusters) const {
+	double global(Doubles const& sum_deg_deg, Doubles const& node_local, Stats const& total, int num_clusters) const {
 		return total.self / total.degree * log(sum_deg_deg[0]);
 	}
 };
@@ -340,7 +340,7 @@ struct ProbBlockModel : public LossFunction {
 	Doubles local(Stats const& clus, Stats const& total) const {
 		return clus.degree * clus.degree;
 	}
-	double global(Doubles const& self_deg_deg, Stats const& total, int num_clusters) const {
+	double global(Doubles const& self_deg_deg, Doubles const& node_local, Stats const& total, int num_clusters) const {
 		double total_deg_deg = total.degree * total.degree;
 		double self_deg_deg2 = self_deg_deg[0] / total_deg_deg;
 		double exit_deg_deg2 = (total_deg_deg - self_deg_deg[0]) / total_deg_deg;
@@ -356,7 +356,7 @@ struct PBM2 : public LossFunction {
 	Doubles local(Stats const& clus, Stats const& total) const {
 		return clus.degree * clus.degree;
 	}
-	double global(Doubles const& self_deg_deg, Stats const& total, int num_clusters) const {
+	double global(Doubles const& self_deg_deg, Doubles const& node_local, Stats const& total, int num_clusters) const {
 		double a = 2.*sqrt(self_deg_deg[0]/total.degree + 3./8);
 		double b = 2.*sqrt(total.self + 3./8);
 		// based on Anscombe transform
@@ -368,7 +368,7 @@ struct PBM3 : public LossFunction {
 	Doubles local(Stats const& clus, Stats const& total) const {
 		return clus.size * clus.size;
 	}
-	double global(Doubles const& self_deg_deg, Stats const& total, int num_clusters) const {
+	double global(Doubles const& self_deg_deg, Doubles const& node_local, Stats const& total, int num_clusters) const {
 		double max_self = self_deg_deg[0];
 		double max_exit = total.size*total.size - max_self;
 		double a = total.self   / max_self;
@@ -381,7 +381,7 @@ struct PBM4 : public LossFunction {
 	Doubles local(Stats const& clus, Stats const& total) const {
 		return clus.degree * clus.degree;
 	}
-	double global(Doubles const& self_deg_deg, Stats const& total, int num_clusters) const {
+	double global(Doubles const& self_deg_deg, Doubles const& node_local, Stats const& total, int num_clusters) const {
 		double max_self = self_deg_deg[0] / total.degree;
 		double max_exit = total.degree - max_self;
 		double a = total.self   / max_self;
@@ -395,7 +395,7 @@ struct NormalGivenDegree_wrong : public LossFunction {
 	Doubles local(Stats const& clus, Stats const& total) const {
 		return sqr(clus.degree / total.degree);
 	}
-	double global(Doubles const& self_deg_deg, Stats const& total, int num_clusters) const {
+	double global(Doubles const& self_deg_deg, Doubles const& node_local, Stats const& total, int num_clusters) const {
 		double Eb = Pb * (1 - self_deg_deg[0]);
 		double Ew = 1 - Eb;
 		return Ew*Eb; // sqrt of that, plus constant junk
@@ -409,7 +409,7 @@ struct PoissonGivenDegree : public LossFunction {
 	Doubles local(Stats const& clus, Stats const& total) const {
 		return sqr(clus.degree + self_loops*clus.size);
 	}
-	double global(Doubles const& within_deg_deg, Stats const& total, int num_clusters) const {
+	double global(Doubles const& within_deg_deg, Doubles const& node_local, Stats const& total, int num_clusters) const {
 		// Assume a flat prior over clusterings
 		// Assume that edge count has poisson distribution with rate proportional to di*dj
 		// q(G,C) = ∑{i,j} ci==cj ? Log[(α*di*dj)^Eij/Eij! * Exp[-α*di*dj]]
@@ -432,6 +432,44 @@ struct PoissonGivenDegree : public LossFunction {
 	}
 };
 
+struct PoissonGivenDegree2 : public LossFunction {
+	double prior_a, prior_b;
+	PoissonGivenDegree2() : prior_a(1.0), prior_b(1.0) {}
+	Doubles local(Stats const& clus, Stats const& total) const {
+		return sqr(clus.degree);
+	}
+	double global(Doubles const& local, Doubles const& node_local, Stats const& total, int num_clusters) const {
+		// Assume that edge count has poisson distribution with rate proportional to di*dj
+		// q(G,C) = ∑{i,j} ci==cj ? Log[(α*di*dj)^Eij/Eij! * Exp[-α*di*dj]]
+		//                        : Log[(β*di*dj)^Eij/Eij! * Exp[-β*di*dj]]
+		//        = ∑{i,j} ci==cj ? Eij*Log[α] - α*di*dj : ...
+		// 
+		// but only do this sum for i≠j. To know that we need ∑{i} di^2
+		// self_deg_deg is an estimate that assumes di is constant. 
+		double self_deg_deg    = node_local[0];  // TODO: actually calculate
+		double within_deg_deg  = max(0., local[0] - self_deg_deg);
+		double between_deg_deg = sqr(total.degree) - local[0]; // ∑ di*dj for between
+		// Note that the first merging of two singletons will not happen if we don't have self loops
+		// therefore, add them here
+		double self    = 0; // Assume no self loops. TODO: actually calculate
+		double within  = total.self - self;
+		double between = total.degree - total.self;
+		// calculate a and b to maximize likelihood
+		// do some smoothing to prevent div-by-0 and log(0),
+		// this is probably some kind of prior (gamma?).
+		double a = (within  + prior_a) / (within_deg_deg  + prior_b);
+		double b = (between + prior_a) / (between_deg_deg + prior_b);
+		// loss
+		/*octave_stdout
+		     << "degdeg: " << self_deg_deg << ", " << within_deg_deg << ", " << between_deg_deg << ", "
+		     << "deg: " << self << ", " << within << ", " << between
+		     << "size: " << total.size << ", " << total.degree << endl;*/
+		double logp = within  * log(a) - a * within_deg_deg
+		            + between * log(b) - b * between_deg_deg;
+		return -logp;
+	}
+};
+
 // put a Chinese Restaurant Process prior instead of a flat prior
 template <typename Base>
 struct CRPPrior : public Base {
@@ -443,8 +481,8 @@ struct CRPPrior : public Base {
 		out[1] = lgamma(clus.size);
 		return out;
 	}
-	double global(Doubles const& local, Stats const& total, int num_clusters) const {
-		double loss = Base::global(local, total, num_clusters);
+	double global(Doubles const& local, Doubles const& node_local, Stats const& total, int num_clusters) const {
+		double loss = Base::global(local, node_local, total, num_clusters);
 		return loss - strength * (local[1] - lgamma(total.size+1));
 	}
 };
@@ -517,7 +555,7 @@ struct CrossEntropy : public LossFunction {
 		if (clus.degree < 1e-6) return 0;
 		return clus.self / total.degree * log(clus.degree / total.degree);
 	}
-	double global(Doubles const& sum_local, Stats const& total, int num_clusters) const {
+	double global(Doubles const& sum_local, Doubles const& node_local, Stats const& total, int num_clusters) const {
 		return sum_local[0] / max(1., total.self);
 	}
 };
@@ -526,7 +564,7 @@ struct CrossEntropy2 : public LossFunction {
 		if (clus.degree < 1e-6) return 0;
 		return clus.self / total.degree * log(clus.degree / total.degree);
 	}
-	double global(Doubles const& sum_local, Stats const& total, int num_clusters) const {
+	double global(Doubles const& sum_local, Doubles const& node_local, Stats const& total, int num_clusters) const {
 		double ts = total.self / total.degree;
 		return sum_local[0] + plogp(ts) + plogp(1-ts);
 	}
@@ -634,14 +672,14 @@ struct ExtraSelf : public LossFunction {
 	Doubles local(Stats const& clus, Stats const& total) const {
 		return lossfun->local(clus, total);
 	}
-	double global(Doubles const& sum_local, Stats const& total, int num_clusters) const {
-		return lossfun->global(sum_local, total, num_clusters) + extra * total.self / total.degree;
+	double global(Doubles const& sum_local, Doubles const& node_local, Stats const& total, int num_clusters) const {
+		return lossfun->global(sum_local, node_local, total, num_clusters) + extra * total.self / total.degree;
 	}
 };
 struct ExtraNum : public ExtraSelf {
 	ExtraNum(shared_ptr<LossFunction>& lossfun, double extra) : ExtraSelf(lossfun,extra) {}
-	double global(Doubles const& sum_local, Stats const& total, int num_clusters) const {
-		return lossfun->global(sum_local, total, num_clusters) + extra * num_clusters;
+	double global(Doubles const& sum_local, Doubles const& node_local, Stats const& total, int num_clusters) const {
+		return lossfun->global(sum_local, node_local, total, num_clusters) + extra * num_clusters;
 	}
 };
 // note: only works for additive loss functions
@@ -662,8 +700,8 @@ struct ExtraNumTarget : public LossFunction {
 	Doubles local(Stats const& clus, Stats const& total) const {
 		return lossfun->local(clus, total);
 	}
-	double global(Doubles const& sum_local, Stats const& total, int num_clusters) const {
-		double lg = lossfun->global(sum_local, total, num_clusters);
+	double global(Doubles const& sum_local, Doubles const& node_local, Stats const& total, int num_clusters) const {
+		double lg = lossfun->global(sum_local, node_local, total, num_clusters);
 		return lg + amount * sqr(num_clusters - target);
 	}
 };
@@ -676,8 +714,8 @@ struct ExtraNoSingleton : public LossFunction {
 		if (clus.size > 0 && clus.size < 1.5) l[0] += amount;
 		return l;
 	}
-	double global(Doubles const& sum_local, Stats const& total, int num_clusters) const {
-		return lossfun->global(sum_local, total, num_clusters);
+	double global(Doubles const& sum_local, Doubles const& node_local, Stats const& total, int num_clusters) const {
+		return lossfun->global(sum_local, node_local, total, num_clusters);
 	}
 };
 // note: only works for additive loss functions
@@ -703,10 +741,10 @@ struct WithTotalVolume : public LossFunction {
 		total2.degree = total2.self = vol;
 		return lossfun->local(clus, total2);
 	}
-	double global(Doubles const& sum_local, Stats const& total, int num_clusters) const {
+	double global(Doubles const& sum_local, Doubles const& node_local, Stats const& total, int num_clusters) const {
 		Stats total2 = total;
 		total2.degree = total2.self = vol;
-		return lossfun->global(sum_local, total2, num_clusters);
+		return lossfun->global(sum_local, node_local, total2, num_clusters);
 	}
 };
 
@@ -801,6 +839,11 @@ shared_ptr<LossFunction> loss_function_by_name(std::string const& name, size_t a
 		if (argc > 0) lossfun->self_loops = argv[0];
 		if (argc > 1) lossfun->prior_a = argv[1];
 		if (argc > 2) lossfun->prior_b = argv[2];
+		return shared_ptr<LossFunction>(lossfun);
+	} else if (name == "poisson2" || name == "pgd2") {
+		PoissonGivenDegree2* lossfun = new PoissonGivenDegree2;
+		if (argc > 0) lossfun->prior_a = argv[0];
+		if (argc > 1) lossfun->prior_b = argv[1];
 		return shared_ptr<LossFunction>(lossfun);
 	} else if (name == "crp-poisson" || name == "crp") {
 		CRPPrior<PoissonGivenDegree>* lossfun = new CRPPrior<PoissonGivenDegree>;
