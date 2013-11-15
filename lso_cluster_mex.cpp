@@ -18,6 +18,9 @@
 using namespace lso_cluster;
 using namespace std;
 
+// matlab already catches exceptions for us
+#define CATCH_EXCEPTIONS 0
+
 // -----------------------------------------------------------------------------
 // Interrupt handling
 // -----------------------------------------------------------------------------
@@ -46,11 +49,11 @@ SparseMatrix sparse_from_mex(const mxArray* ptr) {
 		if (mxIsDouble(ptr)) {
 			return SparseMatrix(
 				mxGetM(ptr), mxGetN(ptr), mxGetNzmax(ptr),
-				(int*)mxGetJc(ptr),
-				(int*)mxGetIr(ptr),
+				mxGetJc(ptr),
+				mxGetIr(ptr),
 				(double*)mxGetPr(ptr));
 		} else if (mxIsLogical(ptr)) {
-			return SparseMatrix(mxGetM(ptr), mxGetN(ptr), mxGetNzmax(ptr), (int*)mxGetJc(ptr), (int*)mxGetIr(ptr), (mxLogical*)mxGetPr(ptr));
+			return SparseMatrix(mxGetM(ptr), mxGetN(ptr), mxGetNzmax(ptr), mxGetJc(ptr), mxGetIr(ptr), (mxLogical*)mxGetPr(ptr));
 		}
 	} else {
 		if (mxIsDouble(ptr)) {
@@ -97,7 +100,7 @@ string string_from_mex(const mxArray* ptr) {
 }
 
 mxArray* to_mex(vector<clus_t> const& x) {
-	int dims[2] = {(int)x.size(),1};
+	mwSize dims[2] = {(int)x.size(),1};
 	mxArray* y = mxCreateNumericArray(2, dims, mxINT32_CLASS, mxREAL);
 	int32_T* y_values = (int32_T*)mxGetData(y);
 	std::copy(x.begin(), x.end(), y_values);
@@ -146,7 +149,7 @@ struct ParamSourceMatlab : ParamSource {
 				more_out->push_back(double_from_mex(mxGetCell(ptr,i)));
 			}
 			return string_from_mex(mxGetCell(ptr,0));
-		}else {
+		} else {
 			return string_from_mex(ptr);
 		}
 	}
@@ -175,7 +178,9 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[]) {
 		return;
 	}
 	
+	#if CATCH_EXCEPTIONS
 	try {
+	#endif
 		// parse arguments, and run the clustering algorithm
 		MexOstreambuf mex_streambuf;
 		ostream mex_output(&mex_streambuf);
@@ -187,9 +192,11 @@ void mexFunction(int nlhs, mxArray* plhs[], int nrhs, const mxArray* prhs[]) {
 		if (nlhs > 0) plhs[0] = to_mex(runner.clustering);
 		if (nlhs > 1) plhs[1] = mxCreateDoubleScalar(runner.loss);
 		if (nlhs > 2) plhs[2] = mxCreateDoubleScalar(runner.num_clusters);
+	#if CATCH_EXCEPTIONS
 	} catch (std::exception const& e) {
 		mexErrMsgTxt(e.what());
 	} catch (...) {
 		mexErrMsgTxt("Unexpected error");
 	}
+	#endif
 }
