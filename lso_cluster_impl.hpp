@@ -106,7 +106,7 @@ SparseMatrix higher_level_graph(SparseMatrix const& a, vector<clus_t> const& nod
 		clus_nodes[node_clus[i]].push_back(i);
 	}
 	// fill matrix, allocate memory as we go
-	Neighbors neighbors(num_clus);
+	Neighbors<double> neighbors(num_clus);
 	size_t nnz = num_clus;
 	SparseMatrix out((int)num_clus,(int)num_clus,(int)nnz);
 	out.cidx(0) = 0;

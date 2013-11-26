@@ -18,24 +18,14 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/math/special_functions/fpclassify.hpp> // isnan / isinf
 
-#ifndef INFINITY
-#define INFINITY std::numeric_limits<double>::infinity()
-#endif
-
 #include "sparse_matrix.hpp"
+#include "util.hpp"
 
 namespace lso_cluster {
 
 using namespace std;
 using namespace boost::math;
 using boost::shared_ptr;
-
-// -----------------------------------------------------------------------------
-// Nodes and clusters
-// -----------------------------------------------------------------------------
-
-typedef int node_t;
-typedef int clus_t;
 
 // -----------------------------------------------------------------------------
 // cluster/node statistics
@@ -144,58 +134,6 @@ struct LossFunction {
 };
 
 // -----------------------------------------------------------------------------
-// Neighborhood accumulation
-// -----------------------------------------------------------------------------
-
-/// List of neighboring clusters of a node, and sum of edge weights to them
-class Neighbors {
-  private:
-	vector<clus_t> clus_;   ///< list of neighboring clusters for current node
-	vector<double> weight_; ///< weight == -INFINITY indicates not used
-  public:
-	Neighbors(int n)
-		: weight_(n, -INFINITY)
-	{}
-	
-	/// Iterate over all neighbors to which any weight was added
-	inline vector<clus_t>::const_iterator begin() const {
-		return clus_.begin();
-	}
-	inline vector<clus_t>::const_iterator end() const {
-		return clus_.end();
-	}
-	/// Sort the neighboring clusters by index
-	inline void sort() {
-		std::sort(clus_.begin(), clus_.end());
-	}
-	
-	inline size_t size() const {
-		return clus_.size();
-	}
-    /// Get the weight to a particular cluster
-    inline double weight(clus_t com) const {
-		return max(0., weight_[com]);
-	}
-	
-	/// Clear all weights
-	inline void clear() {
-		for (size_t idx = 0 ; idx < size() ; ++idx) {
-			weight_[clus_[idx]] = -INFINITY;
-		}
-		clus_.clear();
-	}
-	/// Add weight to the link to cluster c, if c is not yet in the list of neighbors, add it.
-	inline void add(clus_t c, double weight) {
-		if (weight_[c] == -INFINITY) {
-			clus_.push_back(c);
-			weight_[c] = weight;
-		} else {
-			weight_[c] += weight;
-		}
-	}
-};
-
-// -----------------------------------------------------------------------------
 // Utility functions: moving nodes between clusters
 // -----------------------------------------------------------------------------
 
@@ -207,10 +145,10 @@ void init_stats(ClusteringStats& stats, SparseMatrix const& a, const clus_t* map
 /// Update cluster stats, by moving node i from cluster c1 to cluster c2
 /// node_stats = indivisual node stats (duh)
 /// neighbors_i = sum of weights from node i to the clusters
-void update_stats_move(ClusteringStats& clus_stats, ClusteringStats const& node_stats, Neighbors const& neighbors_i, node_t i, clus_t c1, clus_t c2);
+void update_stats_move(ClusteringStats& clus_stats, ClusteringStats const& node_stats, Neighbors<double> const& neighbors_i, node_t i, clus_t c1, clus_t c2);
 
 /// How would loss change after update_stats_move?
-double dloss_of_move(LossFunction const& loss, ClusteringStats const& clus_stats, ClusteringStats const& node_stats, Neighbors const& neighbors_i, node_t i, clus_t c1, clus_t c2);
+double dloss_of_move(LossFunction const& loss, ClusteringStats const& clus_stats, ClusteringStats const& node_stats, Neighbors<double> const& neighbors_i, node_t i, clus_t c1, clus_t c2);
 
 /// The move of node i from cluster c1 to cluster c2
 struct SingleMove {
@@ -243,31 +181,6 @@ void higher_level_partition(vector<int>& clus_partition, const vector<int>& node
 
 /// Given a clustering of a higher level graph, merge the assignments in this graph
 void merge_from_higher_level(vector<clus_t>& node_clus, vector<clus_t> const& clus_superclus);
-
-// -----------------------------------------------------------------------------
-// Utility functions: clusterings
-// -----------------------------------------------------------------------------
-
-/// Construct a cluster by converting unique labels to [0,1,..]
-template <typename T>
-vector<clus_t> clustering_from_array(T const* data, size_t size) {
-	vector<clus_t> clus(size);
-	map<T,clus_t> first_in_clus;
-	for (size_t i = 0 ; i < size ; ++i) {
-		typename map<T,clus_t>::const_iterator it = first_in_clus.find(data[i]);
-		if (it == first_in_clus.end()) {
-			first_in_clus[data[i]] = i;
-			clus[i] = i;
-		} else {
-			clus[i] = it->second;
-		}
-	}
-	return clus;
-}
-
-/// Compress label assignments to the range [0..m-1], return m
-/// all values in x must be 0 <= x[i] < n
-size_t compress_assignments(vector<clus_t>& node_clus);
 
 // -----------------------------------------------------------------------------
 // Parameters
@@ -338,7 +251,7 @@ class Clustering {
 	OptimizationParams const& params;
 	TraceSteps*     trace_out;       // (optional) where to store traces
 	// temporary data
-	mutable Neighbors neighbors;     // neighbor information
+	mutable Neighbors<double> neighbors; // neighbor information
 	mutable vector<node_t> node_perm;// random permutation of the nodes
 	// keeping track of empty clusters
 	vector<clus_t>  empty_cluss;     // list of empty clusters

@@ -9,7 +9,7 @@ clean:
 .PHONY: stand-alone octave-bindings matlab-bindings
 
 # Dependencies
-HEADERS = lso_cluster.hpp lso_cluster_impl.hpp loss_functions.hpp trace_file_io.cpp
+HEADERS = lso_cluster.hpp lso_cluster_impl.hpp loss_functions.hpp trace_file_io.cpp argument_parser.hpp argument_parser_cli.hpp lso_argument_parser.hpp util.hpp
 CXXFLAGS = -O2 -Wall
 
 # Stand alone program

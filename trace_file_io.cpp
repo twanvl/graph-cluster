@@ -1,9 +1,20 @@
+// -----------------------------------------------------------------------------
+// Local search optimization clustering
+// By Twan van Laarhoven
+// License: BSD style, see file LICENSE
+// -----------------------------------------------------------------------------
+
+#ifndef HEADER_LSO_CLUSTER_TRACE_FILE_IO
+#define HEADER_LSO_CLUSTER_TRACE_FILE_IO
+
 #include <stdio.h>
 #include <vector>
 
 #include "lso_cluster.hpp"
 
 namespace lso_cluster {
+
+// -----------------------------------------------------------------------------
 
 void fprintf(FILE* f, vector<int> const& x) {
 	fprintf(f,"[");
@@ -47,4 +58,6 @@ void write_trace_file(const string& filename, vector<shared_ptr<TraceStep> > con
 	fclose(f);
 }
 
+// -----------------------------------------------------------------------------
 }
+#endif
