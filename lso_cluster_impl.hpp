@@ -106,7 +106,7 @@ SparseMatrix higher_level_graph(SparseMatrix const& a, vector<clus_t> const& nod
 		clus_nodes[node_clus[i]].push_back(i);
 	}
 	// fill matrix, allocate memory as we go
-	Neighbors<double> neighbors(num_clus);
+	SparseMap<double> neighbors(num_clus);
 	size_t nnz = num_clus;
 	SparseMatrix out((int)num_clus,(int)num_clus,(int)nnz);
 	out.cidx(0) = 0;
@@ -312,7 +312,7 @@ SingleMove Clustering::best_single_move_for_node(node_t i, bool force_change) co
 	}
 	// always make sure that at least one move to another cluster is considered
 	// this allows different connected components to be merged
-	if (params.consider_random_if_no_moves && neighbors.size() == 1 && num_nodes() > 1) {
+	if (params.consider_random_if_no_moves && neighbors.nnz() == 1 && num_nodes() > 1) {
 		int j = rand() % (num_nodes() - 1);
 		if (j>=i) j++;
 		neighbors.add(j, 0.);

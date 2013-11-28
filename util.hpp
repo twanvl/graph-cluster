@@ -61,14 +61,14 @@ template <> inline double sentinel_value<double>() {
 	return -std::numeric_limits<double>::infinity();
 }
 
-/// List of neighboring clusters of a node, and sum of edge weights to them
+/// A sparse map from integers [0..n) to T
 template <typename T>
-class Neighbors {
+class SparseMap {
   private:
-	std::vector<clus_t> clus_; ///< list of neighboring clusters for current node
-	std::vector<T> weight_; ///< weight == -INFINITY indicates not used
+	std::vector<clus_t> clus_; ///< list of non empty items
+	std::vector<T> weight_; ///< weight == sentinel_value() indicates not used
   public:
-	Neighbors(int n)
+	SparseMap(size_t n)
 		: weight_(n, sentinel_value<T>())
 	{}
 	
@@ -84,8 +84,13 @@ class Neighbors {
 		std::sort(clus_.begin(), clus_.end());
 	}
 	
-	inline size_t size() const {
+	// number of non-zeros
+	inline size_t nnz() const {
 		return clus_.size();
+	}
+	// maximum size of the domain
+	inline size_t max_size() const {
+		return weight_.size();
 	}
     /// Get the weight to a particular cluster
     inline T weight(int c) const {
@@ -94,8 +99,8 @@ class Neighbors {
 	
 	/// Clear all weights
 	inline void clear() {
-		for (size_t idx = 0 ; idx < size() ; ++idx) {
-			weight_[clus_[idx]] = sentinel_value<T>();
+		for (std::vector<clus_t>::const_iterator it = clus_.begin() ; it != clus_.end() ; ++it) {
+			weight_[*it] = sentinel_value<T>();
 		}
 		clus_.clear();
 	}

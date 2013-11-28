@@ -145,10 +145,10 @@ void init_stats(ClusteringStats& stats, SparseMatrix const& a, const clus_t* map
 /// Update cluster stats, by moving node i from cluster c1 to cluster c2
 /// node_stats = indivisual node stats (duh)
 /// neighbors_i = sum of weights from node i to the clusters
-void update_stats_move(ClusteringStats& clus_stats, ClusteringStats const& node_stats, Neighbors<double> const& neighbors_i, node_t i, clus_t c1, clus_t c2);
+void update_stats_move(ClusteringStats& clus_stats, ClusteringStats const& node_stats, SparseMap<double> const& neighbors_i, node_t i, clus_t c1, clus_t c2);
 
 /// How would loss change after update_stats_move?
-double dloss_of_move(LossFunction const& loss, ClusteringStats const& clus_stats, ClusteringStats const& node_stats, Neighbors<double> const& neighbors_i, node_t i, clus_t c1, clus_t c2);
+double dloss_of_move(LossFunction const& loss, ClusteringStats const& clus_stats, ClusteringStats const& node_stats, SparseMap<double> const& neighbors_i, node_t i, clus_t c1, clus_t c2);
 
 /// The move of node i from cluster c1 to cluster c2
 struct SingleMove {
@@ -251,7 +251,7 @@ class Clustering {
 	OptimizationParams const& params;
 	TraceSteps*     trace_out;       // (optional) where to store traces
 	// temporary data
-	mutable Neighbors<double> neighbors; // neighbor information
+	mutable SparseMap<double> neighbors; // neighbor information
 	mutable vector<node_t> node_perm;// random permutation of the nodes
 	// keeping track of empty clusters
 	vector<clus_t>  empty_cluss;     // list of empty clusters
