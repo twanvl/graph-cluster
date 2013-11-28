@@ -154,11 +154,33 @@
 // Some more utility functions
 // -----------------------------------------------------------------------------
 
+// iterate over a column of a sparse matrix
+struct ColumnIterator {
+  public:
+	inline ColumnIterator(SparseMatrix const& mat, int j)
+		: mat(mat), k(mat.cidx(j)), kend(mat.cidx(j+1))
+	{}
+	inline int row() const {
+		return mat.ridx(k);
+	}
+	inline double data() const {
+		return mat.data(k);
+	}
+	inline bool end() const {
+		return k >= kend;
+	}
+	inline void operator ++() {
+		k++;
+	}
+  private:
+	SparseMatrix const& mat;
+	int k, kend;
+};
+
 bool is_symmetric(SparseMatrix const& mat) {
 	for (int j = 0 ; j < mat.cols() ; ++j) {
-		for (int k = mat.cidx(j) ; k < mat.cidx(j+1) ; ++k) {
-			int i = mat.ridx(k);
-			if (mat(j,i) != mat.data(k)) return false;
+		for (ColumnIterator it(mat,j) ; !it.end() ; ++it) {
+			if (mat(j,it.row()) != it.data()) return false;
 		}
 	}
 	return true;
