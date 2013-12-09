@@ -136,7 +136,7 @@ struct NMFParams {
 		, max_cluster_per_node(std::numeric_limits<int>::max())
 		, max_num_cluster(std::numeric_limits<int>::max())
 		, likelihood(LH_GAUSSIAN)
-		, beta(0.)//1e-10)
+		, beta(0e-1)//1e-10)
 		, verbosity(0)
 		, debug_out(debug_out)
 	{}
@@ -480,15 +480,19 @@ void NMFOptimizer::greedy_move(node_t i) {
 			params.debug_out << "    clus weights: " << neighbors << endl;
 		}
 		double best_weight = -1;
-		double best_dloss = -1;
+		double best_dloss = 0;
 		clus_t best_clus = -1;
 		for (Neighbors::const_iterator it = neighbors.begin() ; it != neighbors.end() ; ++it) {
 			clus_t clus = *it;
-			double weight = neighbors.weight(clus) / (clus_sumsq[clus] + params.beta);
-			if (weight > best_weight) {
+			double a = neighbors.weight(clus);
+			double b = clus_sumsq[clus] + params.beta;
+			double weight = a / b;
+			double dloss = -4*weight*a + 2*weight*weight*b;
+			//if (weight > best_weight) {
+			if (dloss < best_dloss) {
 				best_weight = weight;
 				best_clus = clus;
-				best_dloss = -2 * 0; // can't calculate this without looping over *all* nodes in clus
+				best_dloss = dloss; // can't calculate this without looping over *all* nodes in clus
 			}
 		}
 		// did we find something
@@ -502,11 +506,18 @@ void NMFOptimizer::greedy_move(node_t i) {
 			if (params.verbosity >= 5) {
 				double ws[]={0,0.5*best_weight,best_weight,1.5*best_weight};
 				for (int k=0;k<4;++k) {
-					clustering[i].push_back(SparseItem(best_clus,ws[k]));
+					double a = neighbors.weight(best_clus);
+					double b = (clus_sumsq[best_clus] + params.beta);
+					double delta_loss = -4*ws[k]*a + 2*ws[k]*ws[k]*b;
+					// for validation, calculate delta loss the brute force way
+					SparseVector ci = clustering[i];
+					ci.push_back(SparseItem(best_clus,ws[k]));
+					ci.sort();
+					swap(clustering[i],ci);
 					double loss_after = calculate_loss();
-					clustering[i].pop_back();
+					swap(clustering[i],ci);
 					//params.debug_out << "      with " << setw(6) << ws[k] << " loss " << setw(6) << setprecision(1) << fixed << loss_after << "  Δ " << (loss_after - loss_before) << endl;
-					params.debug_printf("      with %.2f, loss %.2f, Δ %.2f\n", ws[k], loss_after, loss_after - loss_before);
+					params.debug_printf("      with %.2f, loss %.2f, Δ %.2f = %.2f\n", ws[k], loss_after, loss_after - loss_before, delta_loss);
 				}
 			}
 		}

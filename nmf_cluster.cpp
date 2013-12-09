@@ -32,8 +32,8 @@ int main(int argc, char const** argv) {
 		double mat[6*6] = {0,1,1,0,0,0 , 1,0,1,0,0,0 , 1,1,0,1,0,0 , 0,0,1,0,1,1 , 0,0,0,1,0,1 , 0,0,0,1,1,0};
 		SparseMatrix graph = SparseMatrix::from_dense(6,6,mat);
 		NMFParams params(cout);
-		params.verbosity = 100;
-		params.num_iter = 5;
+		params.verbosity = 2;
+		params.num_iter = 16;
 		NMFOptimizer optimizer(graph,params);
 		optimizer.run();
 		// print
