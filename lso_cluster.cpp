@@ -4,9 +4,10 @@
 // License: BSD style, see file LICENSE
 // -----------------------------------------------------------------------------
 
+#include "loss_functions.hpp"
 #include "argument_parser_cli.hpp"
-#include "lso_argument_parser.hpp"
 #include "lso_cluster.hpp"
+#include "lso_argument_parser.hpp"
 #include <vector>
 #include <map>
 #include <stdio.h>

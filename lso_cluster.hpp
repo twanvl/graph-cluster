@@ -207,6 +207,7 @@ struct OptimizationParams {
 	int num_loss_tweak_iterations;
 	bool always_consider_empty;
 	bool consider_random_if_no_moves;
+	bool optimize_exhaustive;
 	bool optimize_after_higher_level;
 	bool optimize_higher_level;
 	bool optimize_num_clusters_with_outer_loop;
@@ -228,6 +229,7 @@ struct OptimizationParams {
 		, num_loss_tweak_iterations(32)
 		, always_consider_empty(true)
 		, consider_random_if_no_moves(false)
+		, optimize_exhaustive(false)
 		, optimize_after_higher_level(true)
 		, optimize_higher_level(true)
 		, optimize_num_clusters_with_outer_loop(true)

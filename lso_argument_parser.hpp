@@ -82,6 +82,9 @@ struct LsoMainFunction {
 		} else if (key == "total_volume") {
 			double vol = args.get_double_argument();
 			lossfun = shared_ptr<LossFunction>(new WithTotalVolume(lossfun,vol));
+		} else if (key == "multiply_total_volume" || key == "scale_total_volume") {
+			double vol = args.get_double_argument();
+			lossfun = shared_ptr<LossFunction>(new WithMultiplyTotalVolume(lossfun,vol));
 			
 		} else if (key == "init" || key == "initial") {
 			clustering = args.get_1dvec_argument();
@@ -108,6 +111,8 @@ struct LsoMainFunction {
 			params.num_partitions = args.get_int_argument();
 		} else if (key == "always_consider_empty" || key == "consider_empty") {
 			params.always_consider_empty = args.get_bool_argument();
+		} else if (key == "optimize_exhaustive") {
+			params.optimize_exhaustive = args.get_bool_argument();
 		} else if (key == "optimize_after_higher_level") {
 			params.optimize_after_higher_level = args.get_bool_argument();
 		} else if (key == "optimize_higher_level") {

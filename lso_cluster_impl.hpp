@@ -543,7 +543,9 @@ void Clustering::optimize() {
 		recalc_internal_data();
 		trace("initial");
 		// lots of optimization
-		if (params.optimize_num_clusters_with_outer_loop &&
+		if (params.optimize_exhaustive) {
+			optimize_exhaustive();
+		} else if (params.optimize_num_clusters_with_outer_loop &&
 				(params.min_num_clusters > 1 || params.max_num_clusters < (int)num_nodes())) {
 			reduce_num_clusters_with_extra_loss();
 		} else {

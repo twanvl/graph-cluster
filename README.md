@@ -97,6 +97,10 @@ Optional parameters about internal algorithm details, you only need these if you
    Number of times to try and break apart the clusters and re-cluster them
    Default: 0
  
+ * `'optimize_exhaustive', bool`
+   Use an exhaustive search instead of local search. This is of course very slow. Can be combined with `max_num_cluster`.
+   Default: false.
+    
  * `'optimize_higher_level', bool`
    Use a hierarchical optimizer, where small clusters are considered as nodes of a higher level graph.
    Default: true.
