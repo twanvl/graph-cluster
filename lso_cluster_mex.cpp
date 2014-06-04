@@ -20,7 +20,9 @@ using namespace lso_cluster;
 using namespace std;
 
 // matlab already catches exceptions for us
+#ifndef CATCH_EXCEPTIONS
 #define CATCH_EXCEPTIONS 0
+#endif
 
 // -----------------------------------------------------------------------------
 // The implementation

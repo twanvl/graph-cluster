@@ -105,6 +105,13 @@
 			return data_[(size_t)k];
 		}
 		
+		std::vector<int>::const_iterator cidx_begin() const { return cidx_.begin(); }
+		std::vector<int>::const_iterator cidx_end()   const { return cidx_.end(); }
+		std::vector<int>::const_iterator ridx_begin() const { return ridx_.begin(); }
+		std::vector<int>::const_iterator ridx_end()   const { return ridx_.end(); }
+		std::vector<double>::const_iterator data_begin() const { return data_.begin(); }
+		std::vector<double>::const_iterator data_end()   const { return data_.end(); }
+		
 		double operator () (int i, int j) const {
 			int k0 = cidx(j), k1 = cidx(j+1);
 			// find index with binary search

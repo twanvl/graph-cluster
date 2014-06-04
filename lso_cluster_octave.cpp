@@ -48,4 +48,3 @@ DEFUN_DLD(lso_cluster,args,nargout,USAGE_INFO){
 	}
 	return octave_value_list();
 }
-

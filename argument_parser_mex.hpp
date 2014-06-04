@@ -86,12 +86,30 @@ string string_from_mex(const mxArray* ptr) {
 }
 
 mxArray* to_mex(vector<clus_t> const& x) {
+	// this uses int32, it is better to use double
+	/*
 	mwSize dims[2] = {(int)x.size(),1};
 	mxArray* y = mxCreateNumericArray(2, dims, mxINT32_CLASS, mxREAL);
 	int32_T* y_values = (int32_T*)mxGetData(y);
+	*/
+	mxArray* y = mxCreateDoubleMatrix(x.size(), 1, mxREAL);
+	double* y_values = (double*)mxGetData(y);
+	
 	std::copy(x.begin(), x.end(), y_values);
 	return y;
 }
+
+mxArray* to_mex(SparseMatrix const& x) {
+	mxArray* y = mxCreateSparse(x.rows(), x.cols(), x.nnz(), mxREAL);
+	std::copy(x.data_begin(), x.data_end(), (double*)mxGetData(y));
+	std::copy(x.ridx_begin(), x.ridx_end(), mxGetIr(y));
+	std::copy(x.cidx_begin(), x.cidx_end(), mxGetJc(y));
+	return y;
+}
+
+// -----------------------------------------------------------------------------
+// Param source
+// -----------------------------------------------------------------------------
 
 // (inefficient) wrapper for ostream that uses mexPrintf
 struct MexOstreambuf : public std::streambuf {

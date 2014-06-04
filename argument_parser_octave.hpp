@@ -10,9 +10,12 @@
 #include <octave/oct.h>
 #include <octave/Cell.h>
 #include <octave/parse.h>
+#include <map>
 #include "argument_parser.hpp"
 
 namespace lso_cluster {
+
+using std::map;
 
 // -----------------------------------------------------------------------------
 // Argument parsing for octave
@@ -28,7 +31,7 @@ ColumnVector to_octave(vector<int> const& x) {
 
 vector<int> clustering_from_octave(Matrix const& m) {
 	vector<int> clus(m.nelem());
-	map<double,int> first_in_clus;
+	std::map<double,int> first_in_clus;
 	for (size_t i = 0 ; i < clus.size() ; ++i) {
 		map<double,int>::const_iterator it = first_in_clus.find(m(i));
 		if (it == first_in_clus.end()) {
@@ -41,6 +44,7 @@ vector<int> clustering_from_octave(Matrix const& m) {
 	return clus;
 }
 
+#if defined(HEADER_LSO_LOSS_FUNCTIONS)
 struct OctaveLossFunction : LossFunction {
 	octave_function* fn;
 	OctaveLossFunction(octave_function* fn) : fn(fn) {}
@@ -58,6 +62,7 @@ struct OctaveLossFunction : LossFunction {
 		return retval(0).double_value();
 	}
 };
+#endif
 
 struct ParamSourceOctave : ParamSource {
   private:
@@ -107,18 +112,21 @@ struct ParamSourceOctave : ParamSource {
 	virtual SparseMatrix get_matrix_argument() {
 		return next().sparse_matrix_value();
 	}
-	virtual shared_ptr<LossFunction> try_get_loss_function() {
-		// try to interpret the argument as a loss function
-		const octave_value& val = next();
-		if (val.is_function_handle() || val.is_inline_function()) {
-			octave_function* fn = val.function_value();
-			if (!error_state) {
-				return shared_ptr<LossFunction>(new OctaveLossFunction(fn));
+	#if defined(HEADER_LSO_LOSS_FUNCTIONS)
+	virtual shared_ptr<LossFunction> try_get_loss_function()
+	{
+			// try to interpret the argument as a loss function
+			const octave_value& val = next();
+			if (val.is_function_handle() || val.is_inline_function()) {
+				octave_function* fn = val.function_value();
+				if (!error_state) {
+					return shared_ptr<LossFunction>(new OctaveLossFunction(fn));
+				}
 			}
-		}
-		i--; // failed to parse
-		return shared_ptr<LossFunction>();
+			i--; // failed to parse
+			return shared_ptr<LossFunction>();
 	}
+	#endif
 };
 
 // -----------------------------------------------------------------------------

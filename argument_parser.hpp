@@ -9,6 +9,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 #include <boost/shared_ptr.hpp>
 #include "sparse_matrix.hpp"
 #include "util.hpp"
@@ -39,9 +40,11 @@ struct ArgSource {
 	virtual SparseMatrix   get_matrix_argument() = 0;
 	// try to interpret the argument as a loss function
 	// doesn't consume the argument on failure
+	#if defined(HEADER_LSO_LOSS_FUNCTIONS)
 	virtual shared_ptr<LossFunction> try_get_loss_function() {
 		return shared_ptr<LossFunction>();
 	}
+	#endif
 };
 
 struct ParamSource : ArgSource {
