@@ -651,7 +651,7 @@ struct ConstantPenalty : public LossFunction {
 		return -w + k;
 	}
 };
-struct MonotonicModularity : public LossFunction {
+struct MonotonicModularity : public LossFunction { // adaptive scale modularity
 	double m;
 	double g;
 	MonotonicModularity(double m = 1, double g = 2) : m(m), g(g) {}
@@ -663,6 +663,13 @@ struct MonotonicModularity : public LossFunction {
 	}
 };
 
+struct ConstantPottsModel : public LossFunction {
+	double weight;
+	ConstantPottsModel(double weight = 1) : weight(weight) {}
+	Doubles local(Stats const& clus, Stats const& total) const {
+		return -clus.self + weight * sqr(clus.size);
+	}
+};
 
 
 struct ExtraSelf : public LossFunction {
@@ -744,6 +751,25 @@ struct WithTotalVolume : public LossFunction {
 	double global(Doubles const& sum_local, Doubles const& node_local, Stats const& total, int num_clusters) const {
 		Stats total2 = total;
 		total2.degree = total2.self = vol;
+		return lossfun->global(sum_local, node_local, total2, num_clusters);
+	}
+};
+
+// explicity scale the volume of the graph
+struct WithMultiplyTotalVolume : public LossFunction {
+	shared_ptr<LossFunction> lossfun;
+	double vol;
+	WithMultiplyTotalVolume(shared_ptr<LossFunction>& lossfun, double vol = 1.) : lossfun(lossfun), vol(vol) {}
+	Doubles local(Stats const& clus, Stats const& total) const {
+		Stats total2 = total;
+		total2.degree *= vol;
+		total2.self *= vol;
+		return lossfun->local(clus, total2);
+	}
+	double global(Doubles const& sum_local, Doubles const& node_local, Stats const& total, int num_clusters) const {
+		Stats total2 = total;
+		total2.degree *= vol;
+		total2.self *= vol;
 		return lossfun->global(sum_local, node_local, total2, num_clusters);
 	}
 };
@@ -919,10 +945,14 @@ shared_ptr<LossFunction> loss_function_by_name(std::string const& name, size_t a
 		ConstantPenalty* lossfun = new ConstantPenalty;
 		if (argc > 0) lossfun->k = argv[0];
 		return shared_ptr<LossFunction>(lossfun);
-	} else if (name == "mom") {
+	} else if (name == "mom" || name == "asm" || name == "asmod" || name == "adaptive-scale-modularity") {
 		MonotonicModularity* lossfun = new MonotonicModularity;
 		if (argc > 0) lossfun->m = argv[0];
 		if (argc > 1) lossfun->g = argv[1];
+		return shared_ptr<LossFunction>(lossfun);
+	} else if (name == "cpm" || name == "constant-potts-model") {
+		ConstantPottsModel* lossfun = new ConstantPottsModel;
+		if (argc > 0) lossfun->weight = argv[0];
 		return shared_ptr<LossFunction>(lossfun);
 	} else {
 		throw std::invalid_argument("Unrecognized loss function: '" + name + "'");
