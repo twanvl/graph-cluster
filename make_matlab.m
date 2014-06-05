@@ -4,5 +4,6 @@ function make_matlab(varargin)
 	else
 		more_args = {'-largeArrayDims'};
 	end
-	mex('lso_cluster_mex.cpp','-o','lso_cluster',more_args{:},varargin{:});
+	%mex('lso_cluster_mex.cpp','-o','lso_cluster',more_args{:},varargin{:});
+	mex('nmf_cluster_mex.cpp','-o','nmf_cluster',more_args{:},varargin{:});
 
