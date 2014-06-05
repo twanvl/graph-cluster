@@ -29,11 +29,27 @@ int main(int argc, char const** argv) {
 	}*/
 	try {
 		// Test case
-		double mat[6*6] = {0,1,1,0,0,0 , 1,0,1,0,0,0 , 1,1,0,1,0,0 , 0,0,1,0,1,1 , 0,0,0,1,0,1 , 0,0,0,1,1,0};
-		SparseMatrix graph = SparseMatrix::from_dense(6,6,mat);
+		SparseMatrix graph;
+		if (0) {
+			double mat[6*6] = {0,1,1,0,0,0 , 1,0,1,0,0,0 , 1,1,0,1,0,0 , 0,0,1,0,1,1 , 0,0,0,1,0,1 , 0,0,0,1,1,0};
+			graph = SparseMatrix::from_dense(6,6,mat);
+		} else if (0) {
+			double mat[3*3] = {1,0,0, 0,1,0, 0,0,1};
+			graph = SparseMatrix::from_dense(3,3,mat);
+		} else if (0) {
+			srand(1234567);
+			double mat[3*3] = {1,1,1, 1,1,1, 1,1,1};
+			graph = SparseMatrix::from_dense(3,3,mat);
+		} else {
+			srand(1234567);
+			double mat[3*3] = {0,1,1, 1,0,1, 1,1,0};
+			graph = SparseMatrix::from_dense(3,3,mat);
+		}
+		
 		NMFParams params(cout);
-		params.verbosity = 2;
+		params.verbosity = 15;
 		params.num_iter = 16;
+		//params.max_cluster_per_node = 1;
 		NMFOptimizer optimizer(graph,params);
 		optimizer.run();
 		// print

@@ -4,15 +4,22 @@
 // License: BSD style, see file LICENSE
 // -----------------------------------------------------------------------------
 
+#ifndef HEADER_NMF_CLUSTER
+#define HEADER_NMF_CLUSTER
+
 #include "util.hpp"
+#include "sparse_matrix.hpp"
 #include <vector>
 #include <iomanip>
+#include <stdexcept>
 
 #include <stdarg.h>
+#include <stdio.h>
 
 namespace nmf_cluster {
 
 using namespace lso_cluster;
+using namespace std;
 
 // -----------------------------------------------------------------------------
 // Data structures
@@ -46,38 +53,38 @@ template <class ForwardIterator> bool is_sorted (ForwardIterator first, ForwardI
 
 struct SparseVector : public std::vector<SparseItem> {
 	// lookup a value
-	double operator () (clus_t i) const {
-		assert(is_sorted(this->begin(),this->end()));
-		const_iterator it = std::lower_bound(this->begin(),this->end(),i);
-		if (it != this->end() && it->clus == i) {
-			return it->weight;
-		} else {
-			return 0.;
-		}
-	}
+	double operator () (clus_t i) const;
 	// re-sort by cluster id
 	void sort() {
 		std::sort(this->begin(), this->end());
 	}
 };
 
-double dot(SparseVector const& x, SparseVector const& y) {
-	/*SparseVector::const_iterator it1 = x.begin(), it2 = y.begin();
-	if (it1 == x.end()) return 0.;
-	if (it2 == y.end()) return 0.
-	double sum = 0.;
-	while (true) {
-		if (it1->clus < it2->clus) {
-			if (++it1 == x.end()) break;
-		} else if (it1->clus > it2->clus) {
-			if (++it2 == y.end()) break;
-		} else {
-			sum += it1->weight * it2->weight;
-			if (++it1 == x.end()) break;
-			if (++it2 == y.end()) break;
-		}
+std::ostream& operator << (std::ostream& out, SparseVector const& vec) {
+	out << "[";
+	for (SparseVector::const_iterator it = vec.begin() ; it != vec.end() ; ++it) {
+		if (it != vec.begin()) out << ", ";
+		out << it->clus << ":" << it->weight;
 	}
-	return sum;*/
+	return out << "]";
+}
+
+double SparseVector::operator () (clus_t i) const {
+	assert(is_sorted(this->begin(),this->end()));
+	/*if (!is_sorted(this->begin(),this->end())) {
+		octave_stdout << "not sorted! " << *this << endl;
+		throw "bork";
+	}*/
+	
+	const_iterator it = std::lower_bound(this->begin(),this->end(),i);
+	if (it != this->end() && it->clus == i) {
+		return it->weight;
+	} else {
+		return 0.;
+	}
+}
+
+double dot(SparseVector const& x, SparseVector const& y) {
 	double sum = 0.;
 	for (SparseVector::const_iterator it1 = x.begin(), it2 = y.begin() ; it1 != x.end() && it2 != y.end() ; ) {
 		if (it1->clus < it2->clus) {
@@ -100,7 +107,7 @@ double sumsq(SparseVector const& x) {
 	return sum;
 }
 
-void operator += (vector<double>& x, SparseVector const& y) {
+void operator += (std::vector<double>& x, SparseVector const& y) {
 	for (SparseVector::const_iterator it = y.begin() ; it != y.end() ; ++it) {
 		x[it->clus] += it->weight;
 	}
@@ -152,15 +159,15 @@ class NMFOptimizer {
 	
 	// outputs
 	NMFClustering clustering;
-	vector<double> clus_sum; // total membership of each cluster, invariant: clus_size[k] = sum_i{ clustering[i](k) }
-	vector<double> clus_sumsq;
+	std::vector<double> clus_sum; // total membership of each cluster, invariant: clus_size[k] = sum_i{ clustering[i](k) }
+	std::vector<double> clus_sumsq;
 	//vector<double> prior;
 	double loss;
 	
 	// state used during computation
 	
 	// iterating over nodes in a random order
-	mutable vector<node_t> node_perm;
+	mutable std::vector<node_t> node_perm;
 	
 	// clusters that are 'adjacent' to the current node i
 	//  for each neighbor: weight of edges to it / factor
@@ -217,15 +224,7 @@ void NMFParams::debug_printf(const char* fmt,...) const {
 	debug_out << buf;
 }
 
-ostream& operator << (ostream& out, SparseVector const& vec) {
-	out << "[";
-	for (SparseVector::const_iterator it = vec.begin() ; it != vec.end() ; ++it) {
-		if (it != vec.begin()) out << ", ";
-		out << it->clus << ":" << it->weight;
-	}
-	return out << "]";
-}
-template <typename T> ostream& operator << (ostream& out, SparseMap<T> const& vec) {
+template <typename T> std::ostream& operator << (std::ostream& out, SparseMap<T> const& vec) {
 	out << "{";
 	for (SparseMap<pair<double,double> >::const_iterator it = vec.begin() ; it != vec.end() ; ++it) {
 		if (it != vec.begin()) out << ", ";
@@ -233,7 +232,7 @@ template <typename T> ostream& operator << (ostream& out, SparseMap<T> const& ve
 	}
 	return out << "}";
 }
-ostream& operator << (ostream& out, SparseMap<pair<double,double> > const& vec) {
+std::ostream& operator << (std::ostream& out, SparseMap<std::pair<double,double> > const& vec) {
 	out << "{";
 	for (SparseMap<pair<double,double> >::const_iterator it = vec.begin() ; it != vec.end() ; ++it) {
 		if (it != vec.begin()) out << ", ";
@@ -398,7 +397,7 @@ void NMFOptimizer::run() {
 			if (params.verbosity >= 2) {
 				params.debug_printf("  solution: \n");
 				for (int i = 0 ; i < size() ; ++i) {
-					params.debug_out << "    " << i << " " << clustering[i] << endl;
+					params.debug_out << "    " << i << " " << setprecision(15) << clustering[i] << endl;
 				}
 			}
 		}
@@ -488,6 +487,9 @@ void NMFOptimizer::greedy_move(node_t i) {
 			double b = clus_sumsq[clus] + params.beta;
 			double weight = a / b;
 			double dloss = -4*weight*a + 2*weight*weight*b;
+			if (params.verbosity >= 4) {
+				params.debug_out << "      to: " << clus << ", weight " << a << "/" << b << " = " << setprecision(5) << weight << ", dloss " << setprecision(5) << dloss << endl;
+			}
 			//if (weight > best_weight) {
 			if (dloss < best_dloss) {
 				best_weight = weight;
@@ -530,13 +532,17 @@ void NMFOptimizer::greedy_move(node_t i) {
 		// update neighbors
 		for (ColumnIterator edge(graph,i); !edge.end(); ++edge) {
 			// is this item in cluster j?
-			double clus_weight = clustering[edge.row()](best_clus);
-			if (clus_weight != 0.0) {
-				// I have to iterate over all edge.row()'s clusters
-				// this makes this function cost O(E/V*k^2)
-				// I could reduce this to O(E/V*k+k^2)
-				for (SparseVector::const_iterator cit = clustering[edge.row()].begin() ; cit != clustering[edge.row()].end() ; ++cit) {
-					neighbors.add(cit->clus, -cit->weight * clus_weight*best_weight);
+			if (edge.row() == i) {
+				// TODO: self loop, what to do?
+			} else {
+				double clus_weight = clustering[edge.row()](best_clus);
+				if (clus_weight != 0.0) {
+					// I have to iterate over all edge.row()'s clusters
+					// this makes this function cost O(E/V*k^2)
+					// I could reduce this to O(E/V*k+k^2)
+					for (SparseVector::const_iterator cit = clustering[edge.row()].begin() ; cit != clustering[edge.row()].end() ; ++cit) {
+						neighbors.add(cit->clus, -cit->weight * clus_weight*best_weight);
+					}
 				}
 			}
 		}
@@ -555,3 +561,4 @@ void NMFOptimizer::greedy_move(node_t i) {
 
 // -----------------------------------------------------------------------------
 }
+#endif
