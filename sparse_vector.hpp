@@ -67,6 +67,8 @@ struct SparseVector : private std::vector<SparseItem> {
 	void sort() {
 		std::sort(this->begin(), this->end());
 	}
+	
+	inline size_t nnz() const { return size(); }
 };
 
 std::ostream& operator << (std::ostream& out, SparseVector const& vec) {
