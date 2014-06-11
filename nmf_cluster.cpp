@@ -15,6 +15,19 @@ using namespace std;
 using namespace nmf_cluster;
 
 // -----------------------------------------------------------------------------
+// Debug
+// -----------------------------------------------------------------------------
+
+std::ostream& operator << (std::ostream& out, SparseMatrix const& mat) {
+	for (int j = 0 ; j < mat.cols() ; ++j) {
+		for (ColumnIterator it(mat,j) ; !it.end() ; ++it) {
+			out << "(" << it.row() << "," << j << ") -> " << it.data() << endl;
+		}
+	}
+	return out;
+}
+
+// -----------------------------------------------------------------------------
 // Implementation
 // -----------------------------------------------------------------------------
 
@@ -30,13 +43,13 @@ int main(int argc, char const** argv) {
 	try {
 		// Test case
 		SparseMatrix graph;
-		if (1) {
+		if (0) {
 			double mat[6*6] = {0,1,1,0,0,0 , 1,0,1,0,0,0 , 1,1,0,1,0,0 , 0,0,1,0,1,1 , 0,0,0,1,0,1 , 0,0,0,1,1,0};
 			graph = SparseMatrix::from_dense(6,6,mat);
 		} else if (0) {
 			double mat[3*3] = {1,0,0, 0,1,0, 0,0,1};
 			graph = SparseMatrix::from_dense(3,3,mat);
-		} else if (0) {
+		} else if (1) {
 			srand(1234567);
 			double mat[3*3] = {1,1,1, 1,1,1, 1,1,1};
 			graph = SparseMatrix::from_dense(3,3,mat);
@@ -49,13 +62,15 @@ int main(int argc, char const** argv) {
 		NMFParams params(cout);
 		params.verbosity = 15;
 		params.num_iter = 16;
-		params.objective.support_prior = SUPPORT_ONE;
-		params.objective.weight_beta = 0.1;
+		//params.objective.support_prior = SUPPORT_ONE;
+		params.objective.weight_beta = 0.01;
+		params.objective.support_prior = SUPPORT_POISSON;
+		params.objective.support_lambda = 1;
 		//params.max_cluster_per_node = 1;
 		NMFOptimizer optimizer(graph,params);
 		optimizer.run();
 		// print
-		
+		cout << optimizer.get_clustering();
 		
 	} catch (std::exception const& e) {
 		cerr << e.what() << endl;

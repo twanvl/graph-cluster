@@ -170,6 +170,10 @@ class NMFOptimizer {
 	}
 	// return the current clustering
 	SparseMatrix get_clustering() const;
+	// the loss
+	double get_loss() const {
+		return loss;
+	}
 };
 
 // -----------------------------------------------------------------------------
@@ -185,6 +189,14 @@ void NMFParams::debug_printf(const char* fmt,...) const {
 	debug_out << buf;
 }
 
+template <typename T> std::ostream& operator << (std::ostream& out, std::vector<T> const& vec) {
+	out << "[";
+	for (typename vector<T>::const_iterator it = vec.begin() ; it != vec.end() ; ++it) {
+		if (it != vec.begin()) out << ",";
+		out << *it;
+	}
+	return out << "]";
+}
 template <typename T> std::ostream& operator << (std::ostream& out, SparseMap<T> const& vec) {
 	out << "{";
 	for (SparseMap<pair<double,double> >::const_iterator it = vec.begin() ; it != vec.end() ; ++it) {
@@ -206,10 +218,11 @@ std::ostream& operator << (std::ostream& out, SparseMap<std::pair<double,double>
 // Public interface
 // -----------------------------------------------------------------------------
 
-SparseMatrix NMFOptimizer::get_clustering() const {
+SparseMatrix to_sparse_matrix(NMFClustering const& clustering, size_t max_num_clus) {
 	// find number of non-empty clusters, and remap them to [0..]
-	std::vector<int> clus_id(max_num_clus(), -1);
-	size_t num_clus = 0, num_inclus = 0;
+	std::vector<int> clus_id(max_num_clus, -1); // mapping cluster id to compressed cluster id
+	size_t num_clus = 0;   // number of non-empty clusters
+	size_t num_inclus = 0; // number of non-zeros
 	for (NMFClustering::const_iterator it = clustering.begin() ; it != clustering.end() ; ++it) {
 		for (SparseVector::const_iterator it2 = it->begin() ; it2 != it->end() ; ++it2) {
 			if (clus_id[it2->clus] == -1) {
@@ -221,19 +234,23 @@ SparseMatrix NMFOptimizer::get_clustering() const {
 	}
 	
 	// build clustering matrix
-	// transpose of the usual notation: rows=clusters
-	SparseMatrix out((int)num_clus,(int)size(),(int)num_inclus);
+	// transpose of the usual notation, i.e. here columns=nodes, rows=clusters
+	SparseMatrix out((int)num_clus, (int)clustering.size(), (int)num_inclus);
 	int k = 0;
 	out.cidx(0) = k;
-	for (node_t j = 0 ; j < size() ; ++j) {
+	for (size_t j = 0 ; j < clustering.size() ; ++j) {
 		for (SparseVector::const_iterator it2 = clustering[j].begin() ; it2 != clustering[j].end() ; ++it2) {
 			out.ridx(k) = clus_id[it2->clus];
 			out.data(k) = it2->weight;
 			k++;
 		}
-		out.cidx(j) = k;
+		out.cidx(j+1) = k;
 	}
 	return out;
+}
+
+SparseMatrix NMFOptimizer::get_clustering() const {
+	return to_sparse_matrix(clustering, max_num_clus());
 }
 
 // -----------------------------------------------------------------------------
