@@ -30,7 +30,7 @@ int main(int argc, char const** argv) {
 	try {
 		// Test case
 		SparseMatrix graph;
-		if (0) {
+		if (1) {
 			double mat[6*6] = {0,1,1,0,0,0 , 1,0,1,0,0,0 , 1,1,0,1,0,0 , 0,0,1,0,1,1 , 0,0,0,1,0,1 , 0,0,0,1,1,0};
 			graph = SparseMatrix::from_dense(6,6,mat);
 		} else if (0) {
@@ -49,6 +49,8 @@ int main(int argc, char const** argv) {
 		NMFParams params(cout);
 		params.verbosity = 15;
 		params.num_iter = 16;
+		params.objective.support_prior = SUPPORT_ONE;
+		params.objective.weight_beta = 0.1;
 		//params.max_cluster_per_node = 1;
 		NMFOptimizer optimizer(graph,params);
 		optimizer.run();

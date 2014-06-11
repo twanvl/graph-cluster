@@ -62,6 +62,7 @@ struct SparseVector : private std::vector<SparseItem> {
 	
 	// lookup a value
 	double operator () (clus_t i) const;
+	bool contains(clus_t i) const;
 	
 	// re-sort by cluster-id/key
 	void sort() {
@@ -93,6 +94,10 @@ double SparseVector::operator () (clus_t i) const {
 	} else {
 		return 0.;
 	}
+}
+bool SparseVector::contains(clus_t i) const {
+	const_iterator it = std::lower_bound(this->begin(),this->end(),i);
+	return (it != this->end() && it->clus == i);
 }
 
 double dot(SparseVector const& x, SparseVector const& y) {
