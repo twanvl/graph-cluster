@@ -16,6 +16,30 @@ namespace nmf_cluster {
 // Argument parsing, shared by all interfaces
 // -----------------------------------------------------------------------------
 
+LikelihoodFun parse_likelihood(string const& x) {
+	if (x == "flat") return LH_FLAT;
+	if (x == "Gaussian" || x == "gaussian" || x == "gauss" || x == "euclidean" || x == "l2") return LH_GAUSSIAN;
+	if (x == "Poisson" || x == "poisson") return LH_POISSON;
+	throw std::invalid_argument("Unknown likelihood type: " + x);
+}
+WeightPriorFun parse_weight_prior(string const& x) {
+	if (x == "flat") return PRIOR_FLAT;
+	if (x == "hn" || x == "HN" || x == "half_normal") return PRIOR_HALF_NORMAL;
+	if (x == "gamma") return PRIOR_GAMMA;
+	throw std::invalid_argument("Unknown weight prior: " + x);
+}
+SizePriorFun parse_size_prior(string const& x) {
+	if (x == "flat") return SIZE_FLAT;
+	if (x == "crp" || x == "CRP") return SIZE_CRP;
+	throw std::invalid_argument("Unknown cluster size prior: " + x);
+}
+SupportPriorFun parse_support_prior(string const& x) {
+	if (x == "flat") return SUPPORT_FLAT;
+	if (x == "one" || x == "hard") return SUPPORT_ONE;
+	if (x == "Poisson" || x == "poisson") return SUPPORT_POISSON;
+	throw std::invalid_argument("Unknown node support prior: " + x);
+}
+
 struct NmfMainFunction {
 	// The configuration
 	SparseMatrix graph;
@@ -51,12 +75,24 @@ struct NmfMainFunction {
 	}
 	
 	virtual void add_parameter(string const& key, ArgSource& args) {
+		// parameters of the optimizer
 		if (key == "verbose" || key == "verbosity") {
 			params.verbosity = args.get_int_argument();
 		} else if (key == "max_cluster_per_node" || key == "max_num_cluster_per_node" || key == "cluster_per_node") {
 			params.max_cluster_per_node = args.get_int_argument();
 		} else if (key == "num_iter" || key == "num_iterations") {
 			params.num_iter = args.get_int_argument();
+		// parameters of the objective function
+		} else if (key == "likelihood") {
+			params.objective.likelihood = parse_likelihood(args.get_string_argument());
+		} else if (key == "weight_prior" || key == "prior") {
+			params.objective.weight_prior = parse_weight_prior(args.get_string_argument());
+		} else if (key == "beta" || key == "weight_beta") {
+			params.objective.weight_beta = args.get_double_argument();
+		} else if (key == "size_prior") {
+			params.objective.size_prior = parse_size_prior(args.get_string_argument());
+		} else if (key == "support_prior" || key == "support") {
+			params.objective.support_prior = parse_support_prior(args.get_string_argument());
 		} else {
 			throw std::invalid_argument("Unrecognized key: " + key);
 		}
