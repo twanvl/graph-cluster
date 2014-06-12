@@ -405,52 +405,6 @@ double calculate_loss(NMFObjectiveFun const& obj, SparseMatrix const& graph, NMF
 }
 
 double NMFOptimizer::calculate_loss() const {
-	/*double loss = 0.0;
-	// Loss for non-edges
-	if (params.likelihood == LH_GAUSSIAN) {
-		// Gaussian:
-		//     ∑{ij} 0.5*(∑{k}U(i,k)U(j,k))^2
-		// no fast solution
-		for (int i = 0 ; i < size(); ++i) {
-			for (int j = i+1 ; j < size(); ++j) {
-				double vh = dot(clustering[i], clustering[j]);
-				loss += vh*vh;
-			}
-		}
-		loss *= 2;
-	} else if (params.likelihood == LH_POISSON) {
-		// Poisson:
-		//     ∑{ij} ∑{k}U(i,k)U(j,k)
-		//   = ∑{k}(∑{i}U(i,k))(∑{j}U(j,k))
-		vector<double> clus_weight(max_num_clus(),0.);
-		for (int i = 0 ; i < size() ; ++i) {
-			clus_weight += clustering[i];
-		}
-		for (vector<double>::const_iterator it = clus_weight.begin() ; it != clus_weight.end() ; ++it) {
-			loss += *it * *it;
-		}
-	}
-	// Loss for edges
-	for (int i = 0 ; i < size(); ++i) {
-		for (ColumnIterator edge(graph,i); !edge.end(); ++edge) {
-			// predicted value, v̂ = (U*U')(i,j) = U(i,:)*U(j,:)
-			// loss is 
-			double vh = dot(clustering[i], clustering[edge.row()]);
-			double v  = edge.data();
-			if (params.likelihood == LH_GAUSSIAN) {
-				loss += v*v - 2*v*vh; // we already counted vh^2 above
-			} else if (params.likelihood == LH_POISSON) {
-				loss += v * (log(v) - log(vh));
-			}
-		}
-	}
-	// Regularization term
-	for (int i = 0 ; i < size() ; ++i) {
-		loss += 0.5 * params.beta * sumsq(clustering[i]);
-	}
-	// Prior
-	return loss;
-	*/
 	return nmf_cluster::calculate_loss(params.objective, graph, clustering, max_num_clus());
 }
 void NMFOptimizer::calculate_loss_debug() const {
@@ -680,7 +634,7 @@ bool NMFOptimizer::simple_greedy_move(node_t i) {
 	loss = calculate_loss();
 	// 2. greedily add to clusters
 	bool change = true;
-	while (change) {
+	while (change && (int)clustering[i].nnz() < params.max_cluster_per_node) {
 		change = simple_greedy_add_move(i);
 	}
 	// if the solution is not better, then restore the old one
