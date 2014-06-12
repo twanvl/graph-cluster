@@ -304,7 +304,6 @@ double log_factorial(int n) {
 double calculate_loss(NMFObjectiveFun const& obj, SparseMatrix const& graph, NMFClustering const& clustering, size_t max_num_clus) {
 	double loss = 0.0;
 	// Loss for non-edges
-	/*
 	if (obj.likelihood == LH_GAUSSIAN) {
 		// Gaussian loss:
 		//   L = ∑{i<j} 0.5*(∑{k}U(i,k)U(j,k) - A(i,j))^2
@@ -345,22 +344,6 @@ double calculate_loss(NMFObjectiveFun const& obj, SparseMatrix const& graph, NMF
 				loss += v * (log(v) - log(vh));
 			}
 		}
-	}
-	*/
-	if (obj.likelihood == LH_GAUSSIAN) {
-		// Gaussian loss:
-		//   L = ∑{i<j} 0.5*(∑{k}U(i,k)U(j,k) - A(i,j))^2
-		//     = 0.5*∑{i<j}(∑{k}U(i,k)U(j,k))^2  -  ∑{i<j} A(i,j)*(∑{k}U(i,k)U(j,k))  +  0.5*∑{i<j} A(i,j)^2
-		// Calculate first term:
-		for (size_t i = 0 ; i < clustering.size(); ++i) {
-			for (size_t j = i+1 ; j < clustering.size(); ++j) {
-				double vh = dot(clustering[i], clustering[j]);
-				double v  = graph(i,j);
-				loss += 0.5*(v-vh)*(v-vh);
-			}
-		}
-	} else {
-		throw "TODO";
 	}
 	
 	// Total number of memberships (for normalization constant)
