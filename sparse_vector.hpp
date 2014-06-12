@@ -69,6 +69,11 @@ struct SparseVector : private std::vector<SparseItem> {
 		std::sort(this->begin(), this->end());
 	}
 	
+	// insert a value, it must not yet exist
+	void insert(clus_t k, double weight);
+	// remove an item, return the old weight
+	double remove(clus_t k);
+	
 	inline size_t nnz() const { return size(); }
 };
 
@@ -81,23 +86,36 @@ std::ostream& operator << (std::ostream& out, SparseVector const& vec) {
 	return out << "]";
 }
 
-double SparseVector::operator () (clus_t i) const {
+double SparseVector::operator () (clus_t k) const {
 	assert(is_sorted(this->begin(),this->end()));
 	/*if (!is_sorted(this->begin(),this->end())) {
 		octave_stdout << "not sorted! " << *this << endl;
 		throw "bork";
 	}*/
 	
-	const_iterator it = std::lower_bound(this->begin(),this->end(),i);
-	if (it != this->end() && it->clus == i) {
+	const_iterator it = std::lower_bound(this->begin(),this->end(),k);
+	if (it != this->end() && it->clus == k) {
 		return it->weight;
 	} else {
 		return 0.;
 	}
 }
-bool SparseVector::contains(clus_t i) const {
-	const_iterator it = std::lower_bound(this->begin(),this->end(),i);
-	return (it != this->end() && it->clus == i);
+bool SparseVector::contains(clus_t k) const {
+	const_iterator it = std::lower_bound(this->begin(),this->end(),k);
+	return (it != this->end() && it->clus == k);
+}
+
+void SparseVector::insert(clus_t k, double weight) {
+	iterator it = std::lower_bound(this->begin(),this->end(),k);
+	assert(it == this->end() || it->clus != k);
+	std::vector<SparseItem>::insert(it, SparseItem(k,weight));
+}
+double SparseVector::remove(clus_t k) {
+	iterator it = std::lower_bound(this->begin(),this->end(),k);
+	assert(it != this->end() && it->clus == k);
+	double weight = it->weight;
+	std::vector<SparseItem>::erase(it);
+	return weight;
 }
 
 double dot(SparseVector const& x, SparseVector const& y) {

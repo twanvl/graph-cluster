@@ -11,7 +11,7 @@ clean:
 # Dependencies
 HEADERS = trace_file_io.cpp argument_parser.hpp argument_parser_cli.hpp lso_argument_parser.hpp util.hpp sparse_matrix.hpp
 LSO_HEADERS = $(HEADERS) lso_cluster.hpp lso_cluster_impl.hpp loss_functions.hpp
-NMF_HEADERS = $(HEADERS) nmf_cluster.hpp
+NMF_HEADERS = $(HEADERS) nmf_cluster.hpp nmf_clustering.hpp nmf_objective_function.hpp
 #CXXFLAGS = -O2 -Wall -g
 CXXFLAGS = -g -Wall
 

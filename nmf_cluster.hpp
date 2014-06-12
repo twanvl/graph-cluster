@@ -10,6 +10,8 @@
 #include "util.hpp"
 #include "sparse_matrix.hpp"
 #include "sparse_vector.hpp"
+#include "nmf_clustering.hpp"
+#include "nmf_objective_function.hpp"
 #include <vector>
 #include <iomanip>
 #include <stdexcept>
@@ -22,59 +24,26 @@ namespace nmf_cluster {
 using namespace lso_cluster;
 using namespace std;
 
-// An NMF clustering gives for each node the clusters of which it is a member
-typedef std::vector<SparseVector> NMFClustering;
-
 // -----------------------------------------------------------------------------
 // Objective functions
 // -----------------------------------------------------------------------------
 
-enum LikelihoodFun {
-	LH_FLAT,
-	LH_GAUSSIAN,
-	LH_POISSON,
+// remove a node from all clusters
+struct RemoveMove {
+	node_t i;
 };
-enum WeightPriorFun {
-	PRIOR_FLAT,
-	PRIOR_HALF_NORMAL,
-	PRIOR_GAMMA,
-};
-enum SizePriorFun { // prior on cluster size
-	SIZE_FLAT, // no prior
-	SIZE_CRP,
-};
-enum SupportPriorFun { // prior on clusters-per-node
-	SUPPORT_FLAT,
-	SUPPORT_ONE, // exactly one cluster per node
-	SUPPORT_POISSON
-};
-
-struct NMFObjectiveFun {
-	LikelihoodFun      likelihood;
-	WeightPriorFun     weight_prior;
-	SizePriorFun       size_prior;
-	SupportPriorFun    support_prior;
-	double             likelihood_beta; // inverse scale parameter of likelihood
-	double             weight_beta;     // inverse scale parameter of membership prior
-	double             support_lambda;
-	bool               exclude_diagonal; // exclude A(i,i) from likelihood calculation
-	bool               fixed_normalization; // pretend that the number of clusters is fixed, include normalization constant for all membership coefficients
+// add a node to a cluster (it should not already be in that cluster)
+struct AddMove {
+	node_t i;
+	clus_t clus;
+	double weight;
 	
-	NMFObjectiveFun()
-		: likelihood      (LH_GAUSSIAN)
-		, weight_prior    (PRIOR_HALF_NORMAL)
-		, size_prior      (SIZE_FLAT)
-		, support_prior   (SUPPORT_FLAT)
-		, likelihood_beta (1.0)
-		, weight_beta     (0.0)
-		, support_lambda  (0.0)
-		, exclude_diagonal(true)
-		, fixed_normalization(false)
-	{}
+	AddMove(node_t i, clus_t clus, double weight) : i(i), clus(clus), weight(weight) {}
 };
 
 // Calculate the loss
 double calculate_loss(NMFObjectiveFun const& obj, SparseMatrix const& graph, NMFClustering const& clustering);
+double calculate_loss_row(NMFObjectiveFun const& obj, SparseMatrix const& graph, NMFClustering const& clustering, node_t i);
 
 // -----------------------------------------------------------------------------
 // Parameters
@@ -116,8 +85,8 @@ class NMFOptimizer {
 	double loss;
 	
 	// intermediate/auxilliary values
-	std::vector<double> clus_sum; // total membership of each cluster, invariant: clus_size[k] = sum_i{ clustering[i](k) }
-	std::vector<double> clus_sumsq;
+	//std::vector<double> clus_sum; // total membership of each cluster, invariant: clus_size[k] = sum_i{ clustering[i](k) }
+	//std::vector<double> clus_sumsq;
 	//vector<double> prior;
 	
 	// state used during computation
@@ -136,7 +105,7 @@ class NMFOptimizer {
 	//vector<NodeFactors> old_clus_i;
 	
 	void reset();
-	double calculate_loss() const;
+	void calculate_loss();
 	void calculate_loss_debug() const;
 	// optimization
 	bool optimization_pass();
@@ -154,6 +123,7 @@ class NMFOptimizer {
 	bool simple_greedy_add_move(node_t i);
 	bool simple_greedy_move(node_t i);
 	double loss_after_addition(node_t i, clus_t clus, double weight);
+	double loss_after_addition_slow(node_t i, clus_t clus, double weight);
 	
   public:
 	NMFOptimizer(SparseMatrix const& graph, NMFParams const& params);
@@ -166,7 +136,7 @@ class NMFOptimizer {
 		return (node_t)clustering.size();
 	}
 	inline clus_t max_num_clus() const {
-		return (clus_t)neighbors.max_size();
+		return clustering.max_num_clus();
 	}
 	// return the current clustering
 	SparseMatrix get_clustering() const;
@@ -218,39 +188,8 @@ std::ostream& operator << (std::ostream& out, SparseMap<std::pair<double,double>
 // Public interface
 // -----------------------------------------------------------------------------
 
-SparseMatrix to_sparse_matrix(NMFClustering const& clustering, size_t max_num_clus) {
-	// find number of non-empty clusters, and remap them to [0..]
-	std::vector<int> clus_id(max_num_clus, -1); // mapping cluster id to compressed cluster id
-	size_t num_clus = 0;   // number of non-empty clusters
-	size_t num_inclus = 0; // number of non-zeros
-	for (NMFClustering::const_iterator it = clustering.begin() ; it != clustering.end() ; ++it) {
-		for (SparseVector::const_iterator it2 = it->begin() ; it2 != it->end() ; ++it2) {
-			if (clus_id[it2->clus] == -1) {
-				clus_id[it2->clus] = num_clus;
-				num_clus++;
-			}
-			num_inclus++;
-		}
-	}
-	
-	// build clustering matrix
-	// transpose of the usual notation, i.e. here columns=nodes, rows=clusters
-	SparseMatrix out((int)num_clus, (int)clustering.size(), (int)num_inclus);
-	int k = 0;
-	out.cidx(0) = k;
-	for (size_t j = 0 ; j < clustering.size() ; ++j) {
-		for (SparseVector::const_iterator it2 = clustering[j].begin() ; it2 != clustering[j].end() ; ++it2) {
-			out.ridx(k) = clus_id[it2->clus];
-			out.data(k) = it2->weight;
-			k++;
-		}
-		out.cidx(j+1) = k;
-	}
-	return out;
-}
-
 SparseMatrix NMFOptimizer::get_clustering() const {
-	return to_sparse_matrix(clustering, max_num_clus());
+	return clustering.to_sparse_matrix();
 }
 
 // -----------------------------------------------------------------------------
@@ -262,9 +201,9 @@ static const double epsilon = 1e-10;
 NMFOptimizer::NMFOptimizer(SparseMatrix const& graph, NMFParams const& params)
 	: graph(graph)
 	, params(params)
-	, clustering(graph.cols())
-	, clus_sum(min(params.max_num_cluster, graph.cols()))
-	, clus_sumsq(min(params.max_num_cluster, graph.cols()))
+	, clustering(graph.cols(), min(params.max_num_cluster, graph.cols()))
+	//, clus_sum(min(params.max_num_cluster, graph.cols()))
+	//, clus_sumsq(min(params.max_num_cluster, graph.cols()))
 	, node_perm(graph.cols())
 	, neighbors(min(params.max_num_cluster, graph.cols()))
 {
@@ -278,134 +217,18 @@ NMFOptimizer::NMFOptimizer(SparseMatrix const& graph, NMFParams const& params)
 
 void NMFOptimizer::reset() {
 	// initialize clustering
-	std::fill(clus_sum.begin(), clus_sum.end(), 0.);
-	std::fill(clus_sumsq.begin(), clus_sumsq.end(), 0.);
+	clustering.clear();
 	for (node_t i = 0 ; i < size() ; ++i) {
 		clus_t k = i % max_num_clus();
 		double w = 1.0;
-		clustering[i].clear();
-		clustering[i].push_back(SparseItem(k,w));
-		clus_sum[k] += w;
-		clus_sumsq[k] += w*w;
+		clustering.add(i, k, w);
 	}
 	// loss
 	calculate_loss();
 }
 
-double log_factorial(int n) {
-	double lf = 0.;
-	for (int i = 2 ; i < n ; ++i) {
-		lf += log(i);
-	}
-	return lf;
-}
-
-// loss is negative log likelihood
-double calculate_loss(NMFObjectiveFun const& obj, SparseMatrix const& graph, NMFClustering const& clustering, size_t max_num_clus) {
-	double loss = 0.0;
-	// Loss for non-edges
-	if (obj.likelihood == LH_GAUSSIAN) {
-		// Gaussian loss:
-		//   L = ∑{i<j} 0.5*(∑{k}U(i,k)U(j,k) - A(i,j))^2
-		//     = 0.5*∑{i<j}(∑{k}U(i,k)U(j,k))^2  -  ∑{i<j} A(i,j)*(∑{k}U(i,k)U(j,k))  +  0.5*∑{i<j} A(i,j)^2
-		// Calculate first term:
-		for (size_t i = 0 ; i < clustering.size(); ++i) {
-			for (size_t j = i+1 ; j < clustering.size(); ++j) {
-				double vh = dot(clustering[i], clustering[j]);
-				loss += 0.5*vh*vh;
-			}
-		}
-	} else if (obj.likelihood == LH_POISSON) {
-		// Poisson:
-		//     ∑{ij} ∑{k}U(i,k)U(j,k) - A(i,j)
-		//   = ∑{k}(∑{i}U(i,k))(∑{j}U(j,k))
-		vector<double> clus_weight(max_num_clus, 0.);
-		for (size_t i = 0 ; i < clustering.size() ; ++i) {
-			clus_weight += clustering[i];
-		}
-		for (vector<double>::const_iterator it = clus_weight.begin() ; it != clus_weight.end() ; ++it) {
-			loss += *it * *it;
-		}
-		loss *= 0.5; // only count below diagonal
-	} else {
-		throw std::invalid_argument("Unknown likelihood");
-	}
-	// Loss for edges
-	for (node_t i = 0 ; i < (int)clustering.size(); ++i) {
-		for (ColumnIterator edge(graph,i); !edge.end(); ++edge) {
-			if (i >= edge.row()) continue; // only below diagonal
-			// predicted value, v̂ = (U*U')(i,j) = U(i,:)*U(j,:)
-			// loss is 
-			double vh = dot(clustering[i], clustering[edge.row()]);
-			double v  = edge.data();
-			if (obj.likelihood == LH_GAUSSIAN) {
-				loss += 0.5*v*v - v*vh; // we already counted vh^2 above
-			} else if (obj.likelihood == LH_POISSON) {
-				loss += v * (log(v) - log(vh));
-			}
-		}
-	}
-	
-	// Total number of memberships (for normalization constant)
-	size_t total_memberships = 0;
-	if (obj.fixed_normalization) {
-		total_memberships = clustering.size() * max_num_clus;
-	} else {
-		for (size_t i = 0 ; i < clustering.size() ; ++i) {
-			total_memberships += clustering[i].nnz();
-		}
-	}
-	// Regularization term / prior on membership coefficients
-	if (obj.weight_prior == PRIOR_FLAT) {
-		// nothing
-	} else if (obj.weight_prior == PRIOR_HALF_NORMAL) {
-		// L = ∑{ik} -log( sqrt(2*beta/pi) * exp(-0.5*beta*U(i,k)^2) )
-		for (size_t i = 0 ; i < clustering.size() ; ++i) {
-			loss += 0.5 * obj.weight_beta * sumsq(clustering[i]);
-		}
-		loss += total_memberships * sqrt(2.0 / M_PI * obj.weight_beta);
-	} else {
-		throw std::invalid_argument("Unknown weight prior");
-	}
-	
-	// Cluster sizes
-	vector<int> clus_size(max_num_clus, 0);
-	for (size_t i = 0 ; i < clustering.size() ; ++i) {
-		for (SparseVector::const_iterator it = clustering[i].begin() ; it != clustering[i].end() ; ++it) {
-			clus_size[it->clus]++;
-		}
-	}
-	for (vector<int>::const_iterator it = clus_size.begin() ; it != clus_size.end() ; ++it) {
-		// the prior on size
-		if (obj.size_prior == SIZE_FLAT) {
-			// nothing
-		} else if (obj.size_prior == SIZE_CRP) {
-			loss += log_factorial(*it-1);
-		} else {
-			throw std::invalid_argument("Unknown size prior");
-		}
-	}
-	
-	// Clusters per node
-	for (size_t i = 0 ; i < clustering.size() ; ++i) {
-		if (obj.support_prior == SUPPORT_FLAT) {
-			// nothing
-		} else if (obj.support_prior == SUPPORT_ONE) {
-			if (clustering[i].nnz() > 1) {
-				loss += std::numeric_limits<double>::infinity();
-			}
-		} else if (obj.support_prior == SUPPORT_POISSON) {
-			loss += -clustering[i].nnz() * log(obj.support_lambda) + log_factorial(clustering[i].nnz()) + obj.support_lambda;
-		} else {
-			throw std::invalid_argument("Unknown support prior");
-		}
-	}
-	
-	return loss;
-}
-
-double NMFOptimizer::calculate_loss() const {
-	return nmf_cluster::calculate_loss(params.objective, graph, clustering, max_num_clus());
+void NMFOptimizer::calculate_loss() {
+	loss = nmf_cluster::calculate_loss(params.objective, graph, clustering);
 }
 void NMFOptimizer::calculate_loss_debug() const {
 	double loss = 0.0;
@@ -432,7 +255,8 @@ void NMFOptimizer::calculate_loss_debug() const {
 
 void NMFOptimizer::run() {
 	if (params.verbosity >= 1) {
-		params.debug_out << "inital loss: " << calculate_loss() << endl;
+		calculate_loss();
+		params.debug_out << "inital loss: " << loss << endl;
 		if (params.verbosity >= 4) calculate_loss_debug();
 		if (params.verbosity >= 2) {
 			params.debug_printf("  solution: \n");
@@ -483,6 +307,7 @@ void NMFOptimizer::set_active_node(node_t i) {
 
 
 void NMFOptimizer::greedy_move(node_t i) {
+/*
 	// weight to cluster c should be (something like) A/H
 	// as a test case, consider (node j, edge ij, membership j c₁, membership j c₁)
 	//   j  A_ij  U_j1  U_j2
@@ -611,27 +436,17 @@ void NMFOptimizer::greedy_move(node_t i) {
 		params.debug_out << "  new solution for " << i << " " << clustering[i] << ", loss " << calculate_loss() << endl;
 		if (params.verbosity >= 4) calculate_loss_debug();
 	}
+	*/
 }
-
-// remove a node from all clusters
-struct RemoveMove {
-	node_t i;
-};
-// add a node to a cluster (it should not already be in that cluster)
-struct AddMove {	
-	node_t i;
-	clus_t clus;
-	double weight;
-};
 
 bool NMFOptimizer::simple_greedy_move(node_t i) {
 	// current solution
-	loss = calculate_loss();
+	calculate_loss();
 	double old_loss = loss;
 	SparseVector old_clustering_i = clustering[i];
 	// 1. clear the memberships for node i
-	clustering[i].clear();
-	loss = calculate_loss();
+	clustering.clear_node(i);
+	calculate_loss();
 	// 2. greedily add to clusters
 	bool change = true;
 	while (change && (int)clustering[i].nnz() < params.max_cluster_per_node) {
@@ -644,19 +459,31 @@ bool NMFOptimizer::simple_greedy_move(node_t i) {
 		if (params.verbosity >= 1) {
 			params.debug_out << " Reject all these moves, " << old_loss << " >= " << loss << endl;
 		}
-		clustering[i] = old_clustering_i;
+		clustering.set(i, old_clustering_i);
 		loss = old_loss;
 		return false;
 	}
 }
 
-double NMFOptimizer::loss_after_addition(node_t i, clus_t clus, double weight) {
+double NMFOptimizer::loss_after_addition_slow(node_t i, clus_t clus, double weight) {
 	// very inefficient calculation
-	SparseVector cur_clustering = clustering[i];
-	clustering[i].push_back(SparseItem(clus,weight));
-	clustering[i].sort();
-	double new_loss = calculate_loss();
-	clustering[i] = cur_clustering;
+	clustering.add(i,clus,weight);
+	double new_loss = nmf_cluster::calculate_loss(params.objective, graph, clustering);
+	clustering.remove(i,clus);
+	return new_loss;
+}
+double NMFOptimizer::loss_after_addition(node_t i, clus_t clus, double weight) {
+	// less inefficient calculation
+	double old_row_loss = calculate_loss_row(params.objective, graph, clustering, i);
+	clustering.add(i,clus,weight);
+	double new_row_loss = calculate_loss_row(params.objective, graph, clustering, i);
+	clustering.remove(i,clus);
+	double new_loss = loss + new_row_loss - old_row_loss;
+	// check (slow!)
+	if (params.verbosity >= 5 && abs(loss_after_addition_slow(i,clus,weight) - new_loss) > epsilon) {
+		params.debug_out << "Loss is incorrect: for " << i << " " << clus << " with " << weight << endl;
+		params.debug_out << "   " << new_loss << " vs " << loss_after_addition_slow(i,clus,weight) << endl;
+	}
 	return new_loss;
 }
 
@@ -672,7 +499,8 @@ bool NMFOptimizer::simple_greedy_add_move(node_t i) {
 	}
 	SparseVector cur_clustering = clustering[i];
 	double best_loss = loss;
-	SparseItem best_clus;
+	clus_t best_clus = -1;
+	double best_weight = 0.;
 	for (clus_t clus = 0 ; clus < max_num_clus() ; ++clus) {
 		if (clustering[i].contains(clus)) continue; // i is already in this cluster
 		// try with the given move
@@ -681,37 +509,31 @@ bool NMFOptimizer::simple_greedy_add_move(node_t i) {
 		// check that we indeed found a locally optimal weight
 		if (params.verbosity >= 4) {
 			params.debug_out << "    Consider move: " << i << " to " << clus << " with " << weight << ": " << loss << " -> " << new_loss << endl;
-		}
-		if (loss_after_addition(i, clus, max(0.,weight - 1e-4)) < new_loss ||
-		    loss_after_addition(i, clus, max(0.,weight + 1e-4)) < new_loss) {
-			params.debug_out << "Not an optimal weight: " << i << " to " << clus << " with " << weight << endl
-			                 << " losses: " << loss_after_addition(i, clus, weight - 1e-4) << "  "
-			                 << new_loss << "  " << loss_after_addition(i, clus, weight + 1e-4) << endl;
-			/*
-			params.debug_printf("  current solution: \n");
-			for (int i = 0 ; i < size() ; ++i) {
-				params.debug_out << "    " << i << " " << setprecision(15) << clustering[i] << endl;
+			if (loss_after_addition(i, clus, max(0.,weight - 1e-4)) < new_loss ||
+			    loss_after_addition(i, clus, max(0.,weight + 1e-4)) < new_loss) {
+				params.debug_out << "Not an optimal weight: " << i << " to " << clus << " with " << weight << endl
+								 << " losses: " << loss_after_addition(i, clus, weight - 1e-4) << "  "
+								 << new_loss << "  " << loss_after_addition(i, clus, weight + 1e-4) << endl;
+				params.debug_printf("  current solution: \n");
+				for (int i = 0 ; i < size() ; ++i) {
+					params.debug_out << "    " << i << " " << setprecision(15) << clustering[i] << endl;
+				}
 			}
-			SparseVector cur_clustering = clustering[i];
-			clustering[i].push_back(SparseItem(clus,weight));
-			clustering[i].sort();
-			calculate_loss_debug();
-			clustering[i] = cur_clustering;*/
 		}
 		// is it better?
 		if (new_loss < best_loss) {
 			best_loss = new_loss;
-			best_clus = SparseItem(clus,weight);
+			best_clus = clus;
+			best_weight = weight;
 		}
 	}
 	if (best_loss < loss) {
 		// add to a cluster
 		if (params.verbosity >= 2) {
-			params.debug_out << "  Accept move: " << i << " to " << best_clus.clus << " with " << best_clus.weight << ": " << loss << " -> " << best_loss << endl;
+			params.debug_out << "  Accept move: " << i << " to " << best_clus << " with " << best_weight << ": " << loss << " -> " << best_loss << endl;
 		}
 		loss = best_loss;
-		clustering[i].push_back(best_clus);
-		clustering[i].sort();
+		clustering.add(i, best_clus, best_weight);
 		return true;
 	} else {
 		if (params.verbosity >= 2) {

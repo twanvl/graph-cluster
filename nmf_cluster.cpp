@@ -43,7 +43,7 @@ int main(int argc, char const** argv) {
 	try {
 		// Test case
 		SparseMatrix graph;
-		if (0) {
+		if (1) {
 			double mat[6*6] = {0,1,1,0,0,0 , 1,0,1,0,0,0 , 1,1,0,1,0,0 , 0,0,1,0,1,1 , 0,0,0,1,0,1 , 0,0,0,1,1,0};
 			graph = SparseMatrix::from_dense(6,6,mat);
 		} else if (0) {
@@ -53,6 +53,11 @@ int main(int argc, char const** argv) {
 			srand(1234567);
 			double mat[3*3] = {1,1,1, 1,1,1, 1,1,1};
 			graph = SparseMatrix::from_dense(3,3,mat);
+		} else if (1) {
+			srand(1234567);
+			double mat[9*9];
+			for (size_t i = 0 ; i < sizeof(mat)/sizeof(mat[0]) ; ++i) mat[i] = 1.;
+			graph = SparseMatrix::from_dense(9,9,mat);
 		} else {
 			srand(1234567);
 			double mat[3*3] = {0,1,1, 1,0,1, 1,1,0};
@@ -63,9 +68,9 @@ int main(int argc, char const** argv) {
 		params.verbosity = 15;
 		params.num_iter = 16;
 		//params.objective.support_prior = SUPPORT_ONE;
-		params.objective.weight_beta = 0.01;
-		params.objective.support_prior = SUPPORT_POISSON;
-		params.objective.support_lambda = 1;
+		//params.objective.weight_beta = 0.01;
+		//params.objective.support_prior = SUPPORT_POISSON;
+		//params.objective.support_lambda = 1;
 		//params.max_cluster_per_node = 1;
 		NMFOptimizer optimizer(graph,params);
 		optimizer.run();
