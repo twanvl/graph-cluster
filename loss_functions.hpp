@@ -671,6 +671,21 @@ struct ConstantPottsModel : public LossFunction {
 	}
 };
 
+struct BinaryBlockModel : public LossFunction {
+	// loss within  positive = 0
+	// loss between positive = 1
+	// loss within  negative = 1
+	// loss between negative = 0
+	// exclude diagonal
+	Doubles local(Stats const& clus, Stats const& total) const {
+		//return sqr(clus.size) - 2*clus.self;
+		return sqr(clus.size) - 2*clus.self - clus.size;
+	}
+	double global(Doubles const& sum_local, Doubles const& node_local, Stats const& total, int num_clusters) const {
+		return total.degree + sum_local[0];
+	}
+};
+
 
 struct ExtraSelf : public LossFunction {
 	shared_ptr<LossFunction> lossfun;
@@ -912,6 +927,8 @@ shared_ptr<LossFunction> loss_function_by_name(std::string const& name, size_t a
 		return shared_ptr<LossFunction>(new Parabola2);
 	} else if (name == "ssqrt") {
 		return shared_ptr<LossFunction>(new SSqrt);
+	} else if (name == "bbm") {
+		return shared_ptr<LossFunction>(new BinaryBlockModel);
 	} else if (name == "beta") {
 		BetaLoss* lossfun = new BetaLoss;
 		if (argc > 0) lossfun->a = argv[0];
