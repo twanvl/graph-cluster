@@ -7,12 +7,21 @@
 #ifndef HEADER_LSO_CLUSTER_LSO_ARGUMENT_PARSER
 #define HEADER_LSO_CLUSTER_LSO_ARGUMENT_PARSER
 
+#define INCLUDE_LSO 1
 #include "lso_cluster.hpp"
-#include "loss_functions.hpp"
 #include "argument_parser.hpp"
-#include "trace_file_io.cpp"
+#include "trace_file_io.hpp"
+#include <stdexcept>
 
 namespace lso_cluster {
+
+shared_ptr<LossFunction> loss_function_by_name(std::string const& name, size_t argc, double const* argv);
+shared_ptr<LossFunction> loss_function_extra_self(shared_ptr<LossFunction> const& lossfun, double);
+shared_ptr<LossFunction> loss_function_extra_num(shared_ptr<LossFunction> const& lossfun, double);
+shared_ptr<LossFunction> loss_function_extra_no_singleton(shared_ptr<LossFunction> const& lossfun, double);
+shared_ptr<LossFunction> loss_function_max_cluster_size(shared_ptr<LossFunction> const& lossfun, double);
+shared_ptr<LossFunction> loss_function_with_total_volume(shared_ptr<LossFunction> const& lossfun, double);
+shared_ptr<LossFunction> loss_function_with_multiply_total_volume(shared_ptr<LossFunction> const& lossfun, double);
 
 // -----------------------------------------------------------------------------
 // Argument parsing, shared by all interfaces
@@ -35,7 +44,7 @@ struct LsoMainFunction {
 	// Defaults
 	LsoMainFunction(OptimizationParams const& params)
 		: params(params)
-		, lossfun(new Modularity)
+		, lossfun(loss_function_by_name("modularity",0,nullptr))
 		, optimize(true)
 		, seed(1234567)
 		, loss(0)
@@ -69,22 +78,22 @@ struct LsoMainFunction {
 			}
 		} else if (key == "loss_extra" || key == "extra_loss" || key == "extra_loss_self") {
 			double extra = args.get_double_argument();
-			lossfun = shared_ptr<LossFunction>(new ExtraSelf(lossfun,extra));
+			lossfun = loss_function_extra_self(lossfun,extra);
 		} else if (key == "extra_loss_num") {
 			double extra = args.get_double_argument();
-			lossfun = shared_ptr<LossFunction>(new ExtraNum(lossfun,extra));
+			lossfun = loss_function_extra_num(lossfun,extra);
 		} else if (key == "extra_no_singleton") {
 			double amount = args.get_double_argument();
-			lossfun = shared_ptr<LossFunction>(new ExtraNoSingleton(lossfun,amount));
+			lossfun = loss_function_extra_no_singleton(lossfun,amount);
 		} else if (key == "max_cluster_size") {
 			double max_size = args.get_double_argument();
-			lossfun = shared_ptr<LossFunction>(new ExtraMaxSize(lossfun,max_size));
+			lossfun = loss_function_max_cluster_size(lossfun,max_size);
 		} else if (key == "total_volume") {
 			double vol = args.get_double_argument();
-			lossfun = shared_ptr<LossFunction>(new WithTotalVolume(lossfun,vol));
+			lossfun = loss_function_with_total_volume(lossfun,vol);
 		} else if (key == "multiply_total_volume" || key == "scale_total_volume") {
 			double vol = args.get_double_argument();
-			lossfun = shared_ptr<LossFunction>(new WithMultiplyTotalVolume(lossfun,vol));
+			lossfun = loss_function_with_multiply_total_volume(lossfun,vol);
 			
 		} else if (key == "init" || key == "initial") {
 			clustering = args.get_1dvec_argument();

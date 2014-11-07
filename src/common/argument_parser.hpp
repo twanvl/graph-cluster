@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <boost/shared_ptr.hpp>
 #include "sparse_matrix.hpp"
 #include "util.hpp"
 
@@ -19,7 +18,6 @@ namespace lso_cluster {
 class LossFunction;
 using std::string;
 using std::vector;
-using boost::shared_ptr;
 
 typedef int clus_t;
 
@@ -40,7 +38,7 @@ struct ArgSource {
 	virtual SparseMatrix   get_matrix_argument() = 0;
 	// try to interpret the argument as a loss function
 	// doesn't consume the argument on failure
-	#if defined(HEADER_LSO_LOSS_FUNCTIONS)
+	#if INCLUDE_LSO
 	virtual shared_ptr<LossFunction> try_get_loss_function() {
 		return shared_ptr<LossFunction>();
 	}

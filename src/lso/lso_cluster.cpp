@@ -4,18 +4,14 @@
 // License: BSD style, see file LICENSE
 // -----------------------------------------------------------------------------
 
-#include "loss_functions.hpp"
-#include "argument_parser_cli.hpp"
 #include "lso_cluster.hpp"
 #include "lso_argument_parser.hpp"
+#include "argument_parser_cli.hpp"
 #include <vector>
 #include <map>
 #include <stdio.h>
 #include <cstring>
 #include <cstdlib>
-
-#define OCTAVE_QUIT do{}while(0)
-#include "lso_cluster_impl.hpp"
 
 using namespace std;
 using namespace lso_cluster;

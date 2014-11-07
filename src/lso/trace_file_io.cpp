@@ -4,16 +4,16 @@
 // License: BSD style, see file LICENSE
 // -----------------------------------------------------------------------------
 
-#ifndef HEADER_LSO_CLUSTER_TRACE_FILE_IO
-#define HEADER_LSO_CLUSTER_TRACE_FILE_IO
-
 #include <stdio.h>
 #include <vector>
 
+#include "trace_file_io.hpp"
 #include "lso_cluster.hpp"
 
 namespace lso_cluster {
 
+// -----------------------------------------------------------------------------
+// IO of trace files
 // -----------------------------------------------------------------------------
 
 void fprintf(FILE* f, vector<int> const& x) {
@@ -60,4 +60,3 @@ void write_trace_file(const string& filename, vector<shared_ptr<TraceStep> > con
 
 // -----------------------------------------------------------------------------
 }
-#endif

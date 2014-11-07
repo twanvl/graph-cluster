@@ -15,7 +15,7 @@
 #include <limits>
 #include <limits.h>
 #include <math.h>
-#include <boost/shared_ptr.hpp>
+#include <memory> // for shared_ptr
 #include <boost/math/special_functions/fpclassify.hpp> // isnan / isinf
 
 #include "sparse_matrix.hpp"
@@ -25,7 +25,6 @@ namespace lso_cluster {
 
 using namespace std;
 using namespace boost::math;
-using boost::shared_ptr;
 
 // -----------------------------------------------------------------------------
 // cluster/node statistics

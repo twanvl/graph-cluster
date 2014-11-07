@@ -690,7 +690,7 @@ struct BinaryBlockModel : public LossFunction {
 struct ExtraSelf : public LossFunction {
 	shared_ptr<LossFunction> lossfun;
 	double extra;
-	ExtraSelf(shared_ptr<LossFunction>& lossfun, double extra) : lossfun(lossfun), extra(extra) {}
+	ExtraSelf(shared_ptr<LossFunction> const& lossfun, double extra) : lossfun(lossfun), extra(extra) {}
 	Doubles local(Stats const& clus, Stats const& total) const {
 		return lossfun->local(clus, total);
 	}
@@ -699,7 +699,7 @@ struct ExtraSelf : public LossFunction {
 	}
 };
 struct ExtraNum : public ExtraSelf {
-	ExtraNum(shared_ptr<LossFunction>& lossfun, double extra) : ExtraSelf(lossfun,extra) {}
+	ExtraNum(shared_ptr<LossFunction> const& lossfun, double extra) : ExtraSelf(lossfun,extra) {}
 	double global(Doubles const& sum_local, Doubles const& node_local, Stats const& total, int num_clusters) const {
 		return lossfun->global(sum_local, node_local, total, num_clusters) + extra * num_clusters;
 	}
@@ -708,7 +708,7 @@ struct ExtraNum : public ExtraSelf {
 struct ExtraDegreeSqr : public LossFunction {
 	shared_ptr<LossFunction> lossfun;
 	double target,amount;
-	ExtraDegreeSqr(shared_ptr<LossFunction>& lossfun, double target, double amount) : lossfun(lossfun), target(target), amount(amount) {}
+	ExtraDegreeSqr(shared_ptr<LossFunction> const& lossfun, double target, double amount) : lossfun(lossfun), target(target), amount(amount) {}
 	Doubles local(Stats const& clus, Stats const& total) const {
 		Doubles l = lossfun->local(clus, total);
 		l[0] += amount * sqr(clus.degree / total.degree - target);
@@ -718,7 +718,7 @@ struct ExtraDegreeSqr : public LossFunction {
 struct ExtraNumTarget : public LossFunction {
 	shared_ptr<LossFunction> lossfun;
 	double target,amount;
-	ExtraNumTarget(shared_ptr<LossFunction>& lossfun, double target, double amount) : lossfun(lossfun), target(target), amount(amount) {}
+	ExtraNumTarget(shared_ptr<LossFunction> const& lossfun, double target, double amount) : lossfun(lossfun), target(target), amount(amount) {}
 	Doubles local(Stats const& clus, Stats const& total) const {
 		return lossfun->local(clus, total);
 	}
@@ -730,7 +730,7 @@ struct ExtraNumTarget : public LossFunction {
 struct ExtraNoSingleton : public LossFunction {
 	shared_ptr<LossFunction> lossfun;
 	double amount;
-	ExtraNoSingleton(shared_ptr<LossFunction>& lossfun, double amount = 1.) : lossfun(lossfun), amount(amount) {}
+	ExtraNoSingleton(shared_ptr<LossFunction> const& lossfun, double amount = 1.) : lossfun(lossfun), amount(amount) {}
 	Doubles local(Stats const& clus, Stats const& total) const {
 		Doubles l = lossfun->local(clus, total);
 		if (clus.size > 0 && clus.size < 1.5) l[0] += amount;
@@ -745,7 +745,7 @@ struct ExtraMaxSize : public LossFunction {
 	shared_ptr<LossFunction> lossfun;
 	double max_size;
 	double amount;
-	ExtraMaxSize(shared_ptr<LossFunction>& lossfun, double max_size = 0, double amount = 1e10) : lossfun(lossfun), max_size(max_size), amount(amount) {}
+	ExtraMaxSize(shared_ptr<LossFunction> const& lossfun, double max_size = 0, double amount = 1e10) : lossfun(lossfun), max_size(max_size), amount(amount) {}
 	Doubles local(Stats const& clus, Stats const& total) const {
 		Doubles l = lossfun->local(clus, total);
 		l[0] += max(clus.size - max_size, 0.) * amount;
@@ -757,7 +757,7 @@ struct ExtraMaxSize : public LossFunction {
 struct WithTotalVolume : public LossFunction {
 	shared_ptr<LossFunction> lossfun;
 	double vol;
-	WithTotalVolume(shared_ptr<LossFunction>& lossfun, double vol = 1.) : lossfun(lossfun), vol(vol) {}
+	WithTotalVolume(shared_ptr<LossFunction> const& lossfun, double vol = 1.) : lossfun(lossfun), vol(vol) {}
 	Doubles local(Stats const& clus, Stats const& total) const {
 		Stats total2 = total;
 		total2.degree = total2.self = vol;
@@ -774,7 +774,7 @@ struct WithTotalVolume : public LossFunction {
 struct WithMultiplyTotalVolume : public LossFunction {
 	shared_ptr<LossFunction> lossfun;
 	double vol;
-	WithMultiplyTotalVolume(shared_ptr<LossFunction>& lossfun, double vol = 1.) : lossfun(lossfun), vol(vol) {}
+	WithMultiplyTotalVolume(shared_ptr<LossFunction> const& lossfun, double vol = 1.) : lossfun(lossfun), vol(vol) {}
 	Doubles local(Stats const& clus, Stats const& total) const {
 		Stats total2 = total;
 		total2.degree *= vol;
@@ -974,6 +974,29 @@ shared_ptr<LossFunction> loss_function_by_name(std::string const& name, size_t a
 	} else {
 		throw std::invalid_argument("Unrecognized loss function: '" + name + "'");
 	}
+}
+
+// -----------------------------------------------------------------------------
+// Loss function transformers
+// -----------------------------------------------------------------------------
+
+shared_ptr<LossFunction> loss_function_extra_self(shared_ptr<LossFunction> const& lossfun, double extra) {
+	return make_shared<ExtraSelf>(lossfun,extra);
+}
+shared_ptr<LossFunction> loss_function_extra_num(shared_ptr<LossFunction> const& lossfun, double extra) {
+	return make_shared<ExtraNum>(lossfun,extra);
+}
+shared_ptr<LossFunction> loss_function_extra_no_singleton(shared_ptr<LossFunction> const& lossfun, double amount) {
+	return make_shared<ExtraNoSingleton>(lossfun,amount);
+}
+shared_ptr<LossFunction> loss_function_max_cluster_size(shared_ptr<LossFunction> const& lossfun, double max_size) {
+	return make_shared<ExtraMaxSize>(lossfun,max_size);
+}
+shared_ptr<LossFunction> loss_function_with_total_volume(shared_ptr<LossFunction> const& lossfun, double vol) {
+	return make_shared<WithTotalVolume>(lossfun,vol);
+}
+shared_ptr<LossFunction> loss_function_with_multiply_total_volume(shared_ptr<LossFunction> const& lossfun, double vol) {
+	return make_shared<WithMultiplyTotalVolume>(lossfun,vol);
 }
 
 // -----------------------------------------------------------------------------

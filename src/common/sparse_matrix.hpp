@@ -154,7 +154,7 @@
 // Some more utility functions
 // -----------------------------------------------------------------------------
 
-bool is_symmetric(SparseMatrix const& mat) {
+inline bool is_symmetric(SparseMatrix const& mat) {
 	for (int j = 0 ; j < mat.cols() ; ++j) {
 		for (int k = mat.cidx(j) ; k < mat.cidx(j+1) ; ++k) {
 			int i = mat.ridx(k);

@@ -11,14 +11,37 @@
 #include <map>
 #include <limits>
 #include <algorithm>
+#include <memory>
 
 #ifndef INFINITY
 #define INFINITY std::numeric_limits<double>::infinity()
 #endif
 
+// -----------------------------------------------------------------------------
+// C++11
+// -----------------------------------------------------------------------------
+
+#if __cplusplus < 201103L
+#include <boost/shared_ptr.hpp>
+#include <boost/make_shared.hpp>
+namespace std {
+	using boost::shared_ptr;
+	using boost::make_shared;
+}
+#define nullptr 0
+#endif
+
 namespace lso_cluster {
 
 using std::max;
+
+// -----------------------------------------------------------------------------
+// Octave compatibility
+// -----------------------------------------------------------------------------
+
+#ifndef OCTAVE_QUIT
+#define OCTAVE_QUIT do{}while(0)
+#endif
 
 // -----------------------------------------------------------------------------
 // Nodes and clusters

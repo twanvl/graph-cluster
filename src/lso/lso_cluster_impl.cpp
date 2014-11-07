@@ -10,6 +10,7 @@
 #include <iomanip>
 #include <stdexcept>
 #include <cmath>
+#include <stdio.h>
 #include <stdarg.h>
 
 namespace lso_cluster {

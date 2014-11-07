@@ -11,6 +11,7 @@
 #include <octave/Cell.h>
 #include <octave/parse.h>
 #include <map>
+#include <stdexcept>
 #include "argument_parser.hpp"
 
 namespace lso_cluster {
@@ -44,7 +45,7 @@ vector<int> clustering_from_octave(Matrix const& m) {
 	return clus;
 }
 
-#if defined(HEADER_LSO_LOSS_FUNCTIONS)
+#if INCLUDE_LSO
 struct OctaveLossFunction : LossFunction {
 	octave_function* fn;
 	OctaveLossFunction(octave_function* fn) : fn(fn) {}
@@ -112,7 +113,7 @@ struct ParamSourceOctave : ParamSource {
 	virtual SparseMatrix get_matrix_argument() {
 		return next().sparse_matrix_value();
 	}
-	#if defined(HEADER_LSO_LOSS_FUNCTIONS)
+	#if INCLUDE_LSO
 	virtual shared_ptr<LossFunction> try_get_loss_function()
 	{
 			// try to interpret the argument as a loss function

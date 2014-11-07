@@ -8,7 +8,6 @@
 #include <octave/Cell.h>
 #include <octave/parse.h>
 #include "lso_cluster.hpp"
-#include "lso_cluster_impl.hpp"
 #include "lso_argument_parser.hpp"
 #include "argument_parser_octave.hpp"
 #include <memory>
