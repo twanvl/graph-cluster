@@ -246,7 +246,7 @@ Nodes will be listed in alphabetical order, or in numerical order if the `--nume
 
 Other parameters are specified as `--parameter value`, with the same name as the matlab version parameters. For example `--loss infomap` uses the infomap loss function.
 
-    $ lso_cluster example.in
+    $ lso-cluster example.in
 
 
 References

@@ -1,4 +1,5 @@
 function make_matlab(varargin)
+% Compiles the lso_cluster function for matlab (also octave compatible).
 if exist('OCTAVE_VERSION')
 	more_args = {'-DCATCH_EXCEPTIONS=1'};
 else

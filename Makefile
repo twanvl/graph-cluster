@@ -4,7 +4,7 @@ all: stand-alone
 #all: matlab-bindings
 all: scripts
 
-##########################################################3
+###########################################################
 # Dependencies
 
 HEADERS  = src/common/util.hpp
@@ -21,7 +21,7 @@ LSO_HEADERS += src/lso/lso_argument_parser.hpp
 LSO_SOURCES = src/lso/lso_cluster_impl.cpp
 LSO_SOURCES += src/lso/loss_functions.cpp
 LSO_SOURCES += src/lso/trace_file_io.cpp
-LSO_SOURCES_CLI = $(LSO_SOURCES) src/lso/lso_cluster.cpp
+LSO_SOURCES_CLI = $(LSO_SOURCES) src/lso/lso_cluster_cli.cpp
 LSO_SOURCES_OCT = $(LSO_SOURCES) src/lso/lso_cluster_octave.cpp
 LSO_SOURCES_MEX = $(LSO_SOURCES) src/lso/lso_cluster_mex.cpp
 
@@ -31,14 +31,14 @@ $(LSO_OBJECTS_CLI): $(LSO_HEADERS)
 
 NMF_HEADERS = $(HEADERS) nmf_cluster.hpp nmf_clustering.hpp nmf_objective_function.hpp
 
-##########################################################3
+###########################################################
 
 CXXFLAGS = -std=c++11 -O2 -Wall -Isrc/common
 CXXFLAGS_OCT = -Wall -Isrc/common
 MKOCTFILE = mkoctfile
 MEX = mex
 
-##########################################################3
+###########################################################
 
 clean:
 	rm -rf src/lso/*.o
@@ -47,7 +47,7 @@ clean:
 
 .PHONY: all stand-alone octave-bindings matlab-bindings scripts
 
-##########################################################3
+###########################################################
 
 # Stand alone program
 stand-alone: lso-cluster
@@ -64,19 +64,22 @@ matlab-bindings: lso_cluster.mex
 lso_cluster.mex: $(LSO_SOURCES_MEX) $(LSO_HEADERS)
 	$(MEX) $(CXXFLAGS) -o $@ $(LSO_SOURCES_OCT)
 
-##########################################################3
+###########################################################
+# Scripts to build from octave or matlab
 
 comma := ,
 
-# Scripts
 scripts: make_octave.m make_matlab.m
+.SILENT: make_octave.m make_matlab.m
 
 make_octave.m: Makefile
 	echo "function make_octave(varargin)" > $@
+	echo "% Compiles the lso_cluster function for octave." >> $@
 	echo "mkoctfile($(foreach x,$(LSO_SOURCES_OCT) $(CXXFLAGS_OCT),'$(x)'$(comma)) '-o', 'lso_cluster', varargin{:});" >> $@
 
 make_matlab.m: Makefile
 	echo "function make_matlab(varargin)" > $@
+	echo "% Compiles the lso_cluster function for matlab (also octave compatible)." >> $@
 	echo "if exist('OCTAVE_VERSION')" >> $@
 	echo "	more_args = {'-DCATCH_EXCEPTIONS=1'};" >> $@
 	echo "else" >> $@
