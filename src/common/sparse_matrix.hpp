@@ -154,11 +154,63 @@
 // Some more utility functions
 // -----------------------------------------------------------------------------
 
+// iterate over the nonzeros in a column of a sparse matrix
+struct ColumnIterator {
+  public:
+	inline ColumnIterator(SparseMatrix const& mat, int j)
+		: mat(mat), k(mat.cidx(j)), kend(mat.cidx(j+1))
+	{}
+	inline int row() const {
+		return mat.ridx(k);
+	}
+	inline double data() const {
+		return mat.data(k);
+	}
+	inline bool end() const {
+		return k >= kend;
+	}
+	inline void operator ++() {
+		k++;
+	}
+  private:
+	SparseMatrix const& mat;
+	int k, kend;
+};
+
+// iterate over a column, including zeros
+struct DenseColumnIterator {
+  public:
+	inline DenseColumnIterator(SparseMatrix const& mat, int j)
+		: mat(mat), i(0), k(mat.cidx(j))
+	{}
+	inline int row() const {
+		return i;
+	}
+	inline double data() const {
+		if (mat.ridx(k) == i) {
+			return mat.data(k);
+		} else {
+			return 0.;
+		}
+	}
+	inline bool end() const {
+		return i >= mat.rows();
+	}
+	inline void operator ++() {
+		if (mat.ridx(k) == i) {
+			k++;
+		}
+		i++;
+	}
+  private:
+	SparseMatrix const& mat;
+	int i, k;
+};
+
 inline bool is_symmetric(SparseMatrix const& mat) {
 	for (int j = 0 ; j < mat.cols() ; ++j) {
-		for (int k = mat.cidx(j) ; k < mat.cidx(j+1) ; ++k) {
-			int i = mat.ridx(k);
-			if (mat(j,i) != mat.data(k)) return false;
+		for (ColumnIterator it(mat,j) ; !it.end() ; ++it) {
+			if (mat(j,it.row()) != it.data()) return false;
 		}
 	}
 	return true;

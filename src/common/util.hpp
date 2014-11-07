@@ -11,6 +11,7 @@
 #include <map>
 #include <limits>
 #include <algorithm>
+#include <utility>
 #include <memory>
 
 #ifndef INFINITY
@@ -79,9 +80,27 @@ size_t compress_assignments(std::vector<clus_t>& node_clus);
 // Neighborhood accumulation
 // -----------------------------------------------------------------------------
 
-template <typename T> inline T sentinel_value();
-template <> inline double sentinel_value<double>() {
-	return -std::numeric_limits<double>::infinity();
+template <typename T> struct Sentinel;
+template <> struct Sentinel<double> {
+	static inline double value () {
+		return -std::numeric_limits<double>::infinity();
+	}
+};
+
+template <typename A, typename B> struct Sentinel<std::pair<A,B> > {
+	static inline std::pair<A,B> value() {
+		return std::make_pair(Sentinel<A>::value(), Sentinel<B>::value());
+	}
+};
+template <typename A, typename B>
+inline std::pair<A,B> operator + (std::pair<A,B> const& x, std::pair<A,B> const& y) {
+	return std::make_pair(x.first + y.first, x.second + y.second);
+}
+template <typename A, typename B>
+inline std::pair<A,B>& operator += (std::pair<A,B>& x, std::pair<A,B> const& y) {
+	x.first += y.first;
+	x.second += y.second;
+	return x;
 }
 
 /// A sparse map from integers [0..n) to T
@@ -89,17 +108,18 @@ template <typename T>
 class SparseMap {
   private:
 	std::vector<clus_t> clus_; ///< list of non empty items
-	std::vector<T> weight_; ///< weight == sentinel_value() indicates not used
+	std::vector<T> weight_; ///< value of all items, sentinel_value() indicates not used
   public:
 	SparseMap(size_t n)
-		: weight_(n, sentinel_value<T>())
+		: weight_(n, Sentinel<T>::value())
 	{}
 	
 	/// Iterate over all neighbors to which any weight was added
-	inline std::vector<clus_t>::const_iterator begin() const {
+	typedef typename std::vector<clus_t>::const_iterator const_iterator;
+	inline const_iterator begin() const {
 		return clus_.begin();
 	}
-	inline std::vector<clus_t>::const_iterator end() const {
+	inline const_iterator end() const {
 		return clus_.end();
 	}
 	/// Sort the neighboring clusters by index
@@ -115,25 +135,25 @@ class SparseMap {
 	inline size_t max_size() const {
 		return weight_.size();
 	}
-    /// Get the weight to a particular cluster
-    inline T weight(int c) const {
+	/// Get the weight to a particular cluster
+	inline T weight(int c) const {
 		return max(T(), (T)weight_[c]);
 	}
 	
 	/// Clear all weights
 	inline void clear() {
 		for (std::vector<clus_t>::const_iterator it = clus_.begin() ; it != clus_.end() ; ++it) {
-			weight_[*it] = sentinel_value<T>();
+			weight_[*it] = Sentinel<T>::value();
 		}
 		clus_.clear();
 	}
 	/// Add weight to the link to cluster c, if c is not yet in the list of neighbors, add it.
-	inline void add(clus_t c, double weight) {
-		if (weight_[c] == sentinel_value<T>()) {
+	inline void add(clus_t c, T const& value) {
+		if (weight_[c] == Sentinel<T>::value()) {
 			clus_.push_back(c);
-			weight_[c] = weight;
+			weight_[c] = value;
 		} else {
-			weight_[c] += weight;
+			weight_[c] += value;
 		}
 	}
 };

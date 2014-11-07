@@ -25,11 +25,21 @@ LSO_SOURCES_CLI = $(LSO_SOURCES) src/lso/lso_cluster_cli.cpp
 LSO_SOURCES_OCT = $(LSO_SOURCES) src/lso/lso_cluster_octave.cpp
 LSO_SOURCES_MEX = $(LSO_SOURCES) src/lso/lso_cluster_mex.cpp
 
-LSO_OBJECTS_CLI = $(LSO_SOURCES_CLI:.cpp=.o)
+NMF_HEADERS = $(HEADERS)
+NMF_HEADERS += src/nmf/nmf_cluster.hpp
+NMF_HEADERS += src/nmf/nmf_clustering.hpp
+NMF_HEADERS += src/nmf/nmf_objective_function.hpp
 
+NMF_SOURCES = src/nmf/nmf_cluster_impl.cpp
+NMF_SOURCES_CLI = $(NMF_SOURCES) src/nmf/nmf_cluster_cli.cpp
+NMF_SOURCES_OCT = $(NMF_SOURCES) src/nmf/nmf_cluster_octave.cpp
+NMF_SOURCES_MEX = $(NMF_SOURCES) src/nmf/nmf_cluster_mex.cpp
+
+LSO_OBJECTS_CLI = $(LSO_SOURCES_CLI:.cpp=.o)
 $(LSO_OBJECTS_CLI): $(LSO_HEADERS)
 
-NMF_HEADERS = $(HEADERS) nmf_cluster.hpp nmf_clustering.hpp nmf_objective_function.hpp
+NMF_OBJECTS_CLI = $(NMF_SOURCES_CLI:.cpp=.o)
+$(NMF_OBJECTS_CLI): $(NMF_HEADERS)
 
 ###########################################################
 
@@ -42,6 +52,7 @@ MEX = mex
 
 clean:
 	rm -rf src/lso/*.o
+	rm -rf src/nmf/*.o
 	rm -rf lso_cluster.oct
 	rm -rf lso_cluster.mex
 
@@ -54,15 +65,23 @@ stand-alone: lso-cluster
 lso-cluster: $(LSO_OBJECTS_CLI)
 	$(CXX) $(CXXFLAGS) -o $@ $(LSO_OBJECTS_CLI)
 
+stand-alone: nmf-cluster
+nmf-cluster: $(NMF_OBJECTS_CLI)
+	$(CXX) $(CXXFLAGS) -o $@ $(NMF_OBJECTS_CLI)
+
 # Octave bindings
 octave-bindings: lso_cluster.oct
 lso_cluster.oct: $(LSO_SOURCES_OCT) $(LSO_HEADERS)
 	$(MKOCTFILE) $(CXXFLAGS) -o $@ $(LSO_SOURCES_OCT)
+nmf_cluster.oct: $(NMF_SOURCES_OCT) $(NMF_HEADERS)
+	$(MKOCTFILE) $(CXXFLAGS) -o $@ $(NMF_SOURCES_OCT)
 
 # Matlab bindings
 matlab-bindings: lso_cluster.mex
 lso_cluster.mex: $(LSO_SOURCES_MEX) $(LSO_HEADERS)
 	$(MEX) $(CXXFLAGS) -o $@ $(LSO_SOURCES_OCT)
+nmf_cluster.mex: $(NMF_SOURCES_MEX) $(NMF_HEADERS)
+	$(MEX) $(CXXFLAGS) -o $@ $(NMF_SOURCES_OCT)
 
 ###########################################################
 # Scripts to build from octave or matlab
