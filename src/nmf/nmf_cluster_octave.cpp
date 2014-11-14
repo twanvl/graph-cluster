@@ -37,9 +37,10 @@ DEFUN_DLD(nmf_cluster,args,nargout,USAGE_INFO){
 		
 		// return
 		octave_value_list retval;
-		retval(0) = runner.clustering;
-		retval(1) = runner.loss;
-		retval(2) = runner.clustering.cols();
+		retval(0) = runner.clustering.to_sparse_matrix();
+		retval(1) = to_octave(runner.clustering.to_hard_clustering());
+		retval(2) = runner.loss;
+		retval(3) = to_octave(runner.losses);
 		return retval;
 		
 	} catch (std::exception const& e) {

@@ -22,7 +22,8 @@ using std::map;
 // Argument parsing for octave
 // -----------------------------------------------------------------------------
 
-ColumnVector to_octave(vector<int> const& x) {
+template <typename T>
+ColumnVector to_octave(vector<T> const& x) {
 	ColumnVector y(x.size());
 	for (size_t i = 0 ; i < x.size() ; ++i) {
 		y(i) = x[i];

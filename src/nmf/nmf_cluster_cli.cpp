@@ -41,7 +41,7 @@ int main(int argc, char const** argv) {
 	try {
 		// Test case
 		SparseMatrix graph;
-		if (0) {
+		if (1) {
 			double mat[6*6] = {0,1,1,0,0,0 , 1,0,1,0,0,0 , 1,1,0,1,0,0 , 0,0,1,0,1,1 , 0,0,0,1,0,1 , 0,0,0,1,1,0};
 			graph = SparseMatrix::from_dense(6,6,mat);
 		} else if (0) {
@@ -58,6 +58,7 @@ int main(int argc, char const** argv) {
 			for (size_t i = 0 ; i < n*n ; ++i) mat[i] = 1.;
 			graph = SparseMatrix::from_dense(n,n,mat);
 		} else if (1) {
+			// n*n matrix with m non-zeros
 			srand(1234567);
 			const int n = 100;
 			const int m = 1000;
@@ -74,7 +75,7 @@ int main(int argc, char const** argv) {
 		}
 		
 		NMFParams params(cout);
-		params.verbosity = 0;
+		params.verbosity = 1;
 		//params.num_iter = 16;
 		params.num_iter = 1;
 		params.objective.likelihood = LH_POISSON;
@@ -86,7 +87,7 @@ int main(int argc, char const** argv) {
 		NMFOptimizer optimizer(graph,params);
 		optimizer.run();
 		// print
-		cout << optimizer.get_clustering();
+		cout << optimizer.get_clustering().to_sparse_matrix();
 		
 	} catch (std::exception const& e) {
 		cerr << e.what() << endl;

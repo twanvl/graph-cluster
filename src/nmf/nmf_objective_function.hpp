@@ -25,6 +25,7 @@ enum WeightPriorFun {
 	PRIOR_FLAT,
 	PRIOR_HALF_NORMAL,
 	PRIOR_GAMMA,
+	PRIOR_EXPONENTIAL,
 };
 enum SizePriorFun { // prior on cluster size
 	SIZE_FLAT, // no prior
@@ -48,7 +49,7 @@ struct NMFObjectiveFun {
 	bool               fixed_normalization; // pretend that the number of clusters is fixed, include normalization constant for all membership coefficients
 	
 	NMFObjectiveFun()
-		: likelihood      (LH_GAUSSIAN)
+		: likelihood      (LH_POISSON)
 		, weight_prior    (PRIOR_HALF_NORMAL)
 		, size_prior      (SIZE_FLAT)
 		, support_prior   (SUPPORT_FLAT)

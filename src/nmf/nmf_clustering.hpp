@@ -31,6 +31,7 @@ struct NMFClustering {
 	std::vector<double> cluster_weight;   // total weight of each cluster
 	
   public:
+	NMFClustering() {}
 	NMFClustering(int num_node, int max_num_clus)
 		: clustering(num_node)
 		, cluster_size  (max_num_clus, 0)
@@ -79,6 +80,10 @@ struct NMFClustering {
 	
 	// Convert to a sparse matrix
 	SparseMatrix to_sparse_matrix() const;
+	
+	// Convert to a hard clustering: cluster with highest membership for each node
+	vector<clus_t> to_hard_clustering() const;
+	clus_t best_cluster(node_t i) const;
 	
 	// Modification
 	void add(node_t i, clus_t clus, double weight) {
@@ -143,6 +148,27 @@ SparseMatrix NMFClustering::to_sparse_matrix() const {
 		out.cidx(j+1) = k;
 	}
 	return out;
+}
+
+vector<clus_t> NMFClustering::to_hard_clustering() const {
+	std::vector<clus_t> best_clus(size());
+	for (node_t i = 0 ; i < size() ; ++i) {
+		best_clus[i] = best_cluster(i);
+	}
+	compress_assignments(best_clus);
+	return best_clus;
+}
+
+clus_t NMFClustering::best_cluster(node_t i) const {
+	clus_t best = i;
+	double max_weight = -1;
+	for (SparseVector::const_iterator it = clustering[i].begin() ; it != clustering[i].end() ; ++it) {
+		if (it->weight > max_weight) {
+			best = it->clus;
+			max_weight = it->weight;
+		}
+	}
+	return best;
 }
 
 // -----------------------------------------------------------------------------

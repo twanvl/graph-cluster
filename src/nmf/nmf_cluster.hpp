@@ -83,6 +83,7 @@ class NMFOptimizer {
 	// outputs
 	NMFClustering clustering; // for each node, the clusters it is in
 	double loss;
+	vector<double> losses; // loss after each iteration
 	
 	// intermediate/auxilliary values
 	//std::vector<double> clus_sum; // total membership of each cluster, invariant: clus_size[k] = sum_i{ clustering[i](k) }
@@ -139,10 +140,16 @@ class NMFOptimizer {
 		return clustering.max_num_clus();
 	}
 	// return the current clustering
-	SparseMatrix get_clustering() const;
+	NMFClustering const& get_clustering() const {
+		return clustering;
+	}
 	// the loss
 	double get_loss() const {
 		return loss;
+	}
+	// the loss after each iteration
+	const vector<double>& get_losses() const {
+		return losses;
 	}
 };
 
@@ -185,14 +192,6 @@ std::ostream& operator << (std::ostream& out, SparseMap<std::pair<double,double>
 }
 
 // -----------------------------------------------------------------------------
-// Public interface
-// -----------------------------------------------------------------------------
-
-SparseMatrix NMFOptimizer::get_clustering() const {
-	return clustering.to_sparse_matrix();
-}
-
-// -----------------------------------------------------------------------------
 // Optimization
 // -----------------------------------------------------------------------------
 
@@ -225,6 +224,9 @@ void NMFOptimizer::reset() {
 	}
 	// loss
 	calculate_loss();
+	losses.clear();
+	losses.reserve(params.num_iter+1);
+	losses.push_back(loss);
 }
 
 void NMFOptimizer::calculate_loss() {
@@ -279,6 +281,7 @@ void NMFOptimizer::run() {
 			}
 		}
 		if (!change) break;
+		losses.push_back(loss);
 	}
 }
 
@@ -450,11 +453,12 @@ bool NMFOptimizer::simple_greedy_move(node_t i) {
 		change = simple_greedy_add_move(i);
 	}
 	// if the solution is not better, then restore the old one
-	if (loss < old_loss || (loss == old_loss && clustering[i].nnz() < old_clustering_i.nnz())) {
+	//if (loss < old_loss || (loss == old_loss && clustering[i].nnz() < old_clustering_i.nnz())) {
+	if (loss < old_loss - epsilon || (loss <= old_loss + epsilon && clustering[i].nnz() < old_clustering_i.nnz())) {
 		return true;
 	} else {
 		if (params.verbosity >= 1) {
-			params.debug_out << " Reject all these moves, " << old_loss << " >= " << loss << endl;
+			params.debug_out << " Reject all these moves, old = " << old_loss << " <= " << loss << endl;
 		}
 		clustering.set(i, old_clustering_i);
 		loss = old_loss;

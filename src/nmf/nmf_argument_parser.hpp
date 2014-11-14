@@ -47,8 +47,9 @@ struct NmfMainFunction {
 	bool optimize;
 	int seed;
 	// The output
-	SparseMatrix clustering;
+	NMFClustering clustering;
 	double loss;
+	vector<double> losses;
 	
 	// Defaults
 	NmfMainFunction(NMFParams const& params)
@@ -134,6 +135,7 @@ struct NmfMainFunction {
 		// outputs
 		clustering = optimizer.get_clustering();
 		loss = optimizer.get_loss();
+		losses = optimizer.get_losses();
 	}
 };
 
@@ -146,7 +148,7 @@ struct NmfMainFunction {
 	"i.e. approximate A = factor*factor'.\n" \
 	"\n" \
 	"Usage: \n" \
-	"   [U,clus,loss,numclus] = nmf_cluster(A, [varargin])\n" \
+	"   [U,clus,loss,losses] = nmf_cluster(A, [varargin])\n" \
 	"\n" \
 	"Inputs:\n" \
 	"   A:        The adjacency matrix of a graph.\n" \
@@ -158,7 +160,7 @@ struct NmfMainFunction {
 	"   U:        The factor matrix, it will have a row for each node, and a column for each cluster." \
 	"   clus:     The index of the largest factor for each node\n" \
 	"   loss:     Loss of the solution\n" \
-	"   numclus:  The number of clusters found\n" \
+	"   losses:   Loss after each iteration\n" \
 	"\n" \
 	"Extra options:\n" \
 	"   'loss':             Loss function to use. (See below)\n" \

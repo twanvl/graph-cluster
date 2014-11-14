@@ -84,22 +84,6 @@ void init_stats(ClusteringStats& stats, SparseMatrix const& a, const clus_t* map
 // Utility functions: working with multiple levels
 // -----------------------------------------------------------------------------
 
-// change cluster labels to consecutive integers, i.e. [0,1,..]
-size_t compress_assignments(vector<clus_t>& x) {
-	clus_t num = 0;
-	vector<clus_t> relabel(x.size(), 0);
-	for (size_t i = 0 ; i < x.size() ; ++i) {
-		if (relabel[x[i]] == 0) {
-			relabel[x[i]] = ++num;
-		}
-	}
-	for (size_t i = 0 ; i < x.size() ; ++i) {
-		x[i] = relabel[x[i]] - 1;
-	}
-	return num;
-	
-}
-
 SparseMatrix higher_level_graph(SparseMatrix const& a, vector<clus_t> const& node_clus, size_t num_clus) {
 	// determine nodes for each cluster
 	vector<vector<node_t> > clus_nodes(num_clus);

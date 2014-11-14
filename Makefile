@@ -2,7 +2,7 @@
 all: stand-alone
 #all: octave-bindings
 #all: matlab-bindings
-all: scripts
+#all: scripts
 
 ###########################################################
 # Dependencies
@@ -21,6 +21,7 @@ LSO_HEADERS += src/lso/lso_argument_parser.hpp
 LSO_SOURCES = src/lso/lso_cluster_impl.cpp
 LSO_SOURCES += src/lso/loss_functions.cpp
 LSO_SOURCES += src/lso/trace_file_io.cpp
+LSO_SOURCES += src/common/util.cpp
 LSO_SOURCES_CLI = $(LSO_SOURCES) src/lso/lso_cluster_cli.cpp
 LSO_SOURCES_OCT = $(LSO_SOURCES) src/lso/lso_cluster_octave.cpp
 LSO_SOURCES_MEX = $(LSO_SOURCES) src/lso/lso_cluster_mex.cpp
@@ -31,6 +32,7 @@ NMF_HEADERS += src/nmf/nmf_clustering.hpp
 NMF_HEADERS += src/nmf/nmf_objective_function.hpp
 
 NMF_SOURCES = src/nmf/nmf_cluster_impl.cpp
+NMF_SOURCES += src/common/util.cpp
 NMF_SOURCES_CLI = $(NMF_SOURCES) src/nmf/nmf_cluster_cli.cpp
 NMF_SOURCES_OCT = $(NMF_SOURCES) src/nmf/nmf_cluster_octave.cpp
 NMF_SOURCES_MEX = $(NMF_SOURCES) src/nmf/nmf_cluster_mex.cpp
@@ -73,6 +75,7 @@ nmf-cluster: $(NMF_OBJECTS_CLI)
 octave-bindings: lso_cluster.oct
 lso_cluster.oct: $(LSO_SOURCES_OCT) $(LSO_HEADERS)
 	$(MKOCTFILE) $(CXXFLAGS) -o $@ $(LSO_SOURCES_OCT)
+octave-bindings: nmf_cluster.oct
 nmf_cluster.oct: $(NMF_SOURCES_OCT) $(NMF_HEADERS)
 	$(MKOCTFILE) $(CXXFLAGS) -o $@ $(NMF_SOURCES_OCT)
 
@@ -80,6 +83,7 @@ nmf_cluster.oct: $(NMF_SOURCES_OCT) $(NMF_HEADERS)
 matlab-bindings: lso_cluster.mex
 lso_cluster.mex: $(LSO_SOURCES_MEX) $(LSO_HEADERS)
 	$(MEX) $(CXXFLAGS) -o $@ $(LSO_SOURCES_OCT)
+matlab-bindings: nmf_cluster.mex
 nmf_cluster.mex: $(NMF_SOURCES_MEX) $(NMF_HEADERS)
 	$(MEX) $(CXXFLAGS) -o $@ $(NMF_SOURCES_OCT)
 
@@ -95,6 +99,7 @@ make_octave.m: Makefile
 	echo "function make_octave(varargin)" > $@
 	echo "% Compiles the lso_cluster function for octave." >> $@
 	echo "mkoctfile($(foreach x,$(LSO_SOURCES_OCT) $(CXXFLAGS_OCT),'$(x)'$(comma)) '-o', 'lso_cluster', varargin{:});" >> $@
+	echo "mkoctfile($(foreach x,$(NMF_SOURCES_OCT) $(CXXFLAGS_OCT),'$(x)'$(comma)) '-o', 'nmf_cluster', varargin{:});" >> $@
 
 make_matlab.m: Makefile
 	echo "function make_matlab(varargin)" > $@
