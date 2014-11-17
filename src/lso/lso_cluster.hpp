@@ -18,8 +18,8 @@
 #include <memory> // for shared_ptr
 #include <boost/math/special_functions/fpclassify.hpp> // isnan / isinf
 
-#include "sparse_matrix.hpp"
 #include "util.hpp"
+#include "sparse_matrix.hpp"
 
 namespace lso_cluster {
 

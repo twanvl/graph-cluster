@@ -79,7 +79,7 @@ struct NmfMainFunction {
 		// parameters of the optimizer
 		if (key == "verbose" || key == "verbosity") {
 			params.verbosity = args.get_int_argument();
-		} else if (key == "max_cluster_per_node" || key == "max_num_cluster_per_node" || key == "cluster_per_node") {
+		} else if (key == "max_cluster_per_node" || key == "max_clusters_per_node" || key == "max_num_cluster_per_node" || key == "cluster_per_node") {
 			params.max_cluster_per_node = args.get_int_argument();
 		} else if (key == "num_iter" || key == "num_iterations") {
 			params.num_iter = args.get_int_argument();

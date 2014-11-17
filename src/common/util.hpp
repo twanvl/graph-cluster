@@ -7,6 +7,9 @@
 #ifndef HEADER_LSO_CLUSTER_UTIL
 #define HEADER_LSO_CLUSTER_UTIL
 
+#if OCTAVE
+#include <octave/oct.h>
+#endif
 #include <vector>
 #include <map>
 #include <limits>

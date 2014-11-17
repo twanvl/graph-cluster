@@ -46,7 +46,8 @@ $(NMF_OBJECTS_CLI): $(NMF_HEADERS)
 ###########################################################
 
 CXXFLAGS = -std=c++11 -O2 -Wall -Isrc/common
-CXXFLAGS_OCT = -Wall -Isrc/common
+CXXFLAGS_OCT = -Wall -Isrc/common -DOCTAVE
+CXXFLAGS_MEX = -Wall -Isrc/common
 MKOCTFILE = mkoctfile
 MEX = mex
 
@@ -74,10 +75,10 @@ nmf-cluster: $(NMF_OBJECTS_CLI)
 # Octave bindings
 octave-bindings: lso_cluster.oct
 lso_cluster.oct: $(LSO_SOURCES_OCT) $(LSO_HEADERS)
-	$(MKOCTFILE) $(CXXFLAGS) -o $@ $(LSO_SOURCES_OCT)
+	$(MKOCTFILE) $(CXXFLAGS_OCT) -o $@ $(LSO_SOURCES_OCT)
 octave-bindings: nmf_cluster.oct
 nmf_cluster.oct: $(NMF_SOURCES_OCT) $(NMF_HEADERS)
-	$(MKOCTFILE) $(CXXFLAGS) -o $@ $(NMF_SOURCES_OCT)
+	$(MKOCTFILE) $(CXXFLAGS_OCT) -o $@ $(NMF_SOURCES_OCT)
 
 # Matlab bindings
 matlab-bindings: lso_cluster.mex
@@ -114,7 +115,7 @@ make_lso_cluster_matlab.m: Makefile
 	echo "else" >> $@
 	echo "	more_args = {'-largeArrayDims'};" >> $@
 	echo "end" >> $@
-	echo "mex($(foreach x,$(LSO_SOURCES_MEX) $(CXXFLAGS_OCT),'$(x)'$(comma)) '-o', 'lso_cluster', more_args{:}, varargin{:});" >> $@
+	echo "mex($(foreach x,$(LSO_SOURCES_MEX) $(CXXFLAGS_MEX),'$(x)'$(comma)) '-o', 'lso_cluster', more_args{:}, varargin{:});" >> $@
 make_nmf_cluster_matlab.m: Makefile
 	echo "function make_nmf_cluster_matlab(varargin)" > $@
 	echo "% Compiles the nmf_cluster function for matlab (also octave compatible)." >> $@
@@ -123,4 +124,4 @@ make_nmf_cluster_matlab.m: Makefile
 	echo "else" >> $@
 	echo "	more_args = {'-largeArrayDims'};" >> $@
 	echo "end" >> $@
-	echo "mex($(foreach x,$(NMF_SOURCES_MEX) $(CXXFLAGS_OCT),'$(x)'$(comma)) '-o', 'nmf_cluster', more_args{:}, varargin{:});" >> $@
+	echo "mex($(foreach x,$(NMF_SOURCES_MEX) $(CXXFLAGS_MEX),'$(x)'$(comma)) '-o', 'nmf_cluster', more_args{:}, varargin{:});" >> $@

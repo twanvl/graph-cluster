@@ -16,14 +16,14 @@
 // This is a simple replacement for the octave SparseArray class
 // -----------------------------------------------------------------------------
 
-#ifdef OCTAVE_VERSION
+#ifdef OCTAVE
 	
 	#include <octave/Sparse.h>
 	typedef octave_idx_type SparseMatrix_index;
 	
 #else
 	
-    using namespace boost::math;
+	using namespace boost::math;
 	typedef int SparseMatrix_index;
 	
 	class SparseMatrix {
