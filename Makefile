@@ -2,7 +2,7 @@
 all: stand-alone
 #all: octave-bindings
 #all: matlab-bindings
-#all: scripts
+all: scripts
 
 ###########################################################
 # Dependencies
@@ -92,17 +92,22 @@ nmf_cluster.mex: $(NMF_SOURCES_MEX) $(NMF_HEADERS)
 
 comma := ,
 
-scripts: make_octave.m make_matlab.m
-.SILENT: make_octave.m make_matlab.m
+scripts: make_lso_cluster_octave.m make_lso_cluster_matlab.m
+scripts: make_nmf_cluster_octave.m make_nmf_cluster_matlab.m
+.SILENT: make_lso_cluster_octave.m make_lso_cluster_matlab.m
+.SILENT: make_nmf_cluster_octave.m make_nmf_cluster_matlab.m
 
-make_octave.m: Makefile
-	echo "function make_octave(varargin)" > $@
+make_lso_cluster_octave.m: Makefile
+	echo "function make_lso_cluster_octave(varargin)" > $@
 	echo "% Compiles the lso_cluster function for octave." >> $@
 	echo "mkoctfile($(foreach x,$(LSO_SOURCES_OCT) $(CXXFLAGS_OCT),'$(x)'$(comma)) '-o', 'lso_cluster', varargin{:});" >> $@
+make_nmf_cluster_octave.m: Makefile
+	echo "function make_nmf_cluster_octave(varargin)" > $@
+	echo "% Compiles the nmf_cluster function for octave." >> $@
 	echo "mkoctfile($(foreach x,$(NMF_SOURCES_OCT) $(CXXFLAGS_OCT),'$(x)'$(comma)) '-o', 'nmf_cluster', varargin{:});" >> $@
 
-make_matlab.m: Makefile
-	echo "function make_matlab(varargin)" > $@
+make_lso_cluster_matlab.m: Makefile
+	echo "function make_lso_cluster_matlab(varargin)" > $@
 	echo "% Compiles the lso_cluster function for matlab (also octave compatible)." >> $@
 	echo "if exist('OCTAVE_VERSION')" >> $@
 	echo "	more_args = {'-DCATCH_EXCEPTIONS=1'};" >> $@
@@ -110,4 +115,12 @@ make_matlab.m: Makefile
 	echo "	more_args = {'-largeArrayDims'};" >> $@
 	echo "end" >> $@
 	echo "mex($(foreach x,$(LSO_SOURCES_MEX) $(CXXFLAGS_OCT),'$(x)'$(comma)) '-o', 'lso_cluster', more_args{:}, varargin{:});" >> $@
-
+make_nmf_cluster_matlab.m: Makefile
+	echo "function make_nmf_cluster_matlab(varargin)" > $@
+	echo "% Compiles the nmf_cluster function for matlab (also octave compatible)." >> $@
+	echo "if exist('OCTAVE_VERSION')" >> $@
+	echo "	more_args = {'-DCATCH_EXCEPTIONS=1'};" >> $@
+	echo "else" >> $@
+	echo "	more_args = {'-largeArrayDims'};" >> $@
+	echo "end" >> $@
+	echo "mex($(foreach x,$(NMF_SOURCES_MEX) $(CXXFLAGS_OCT),'$(x)'$(comma)) '-o', 'nmf_cluster', more_args{:}, varargin{:});" >> $@
