@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <utility>
 #include <memory>
+#include <stdexcept>
 
 #ifndef INFINITY
 #define INFINITY std::numeric_limits<double>::infinity()
@@ -31,6 +32,7 @@
 namespace std {
 	using boost::shared_ptr;
 	using boost::make_shared;
+	template <typename T> inline T const& move(T const& x) { return x; }
 }
 #define nullptr 0
 #endif
@@ -46,6 +48,13 @@ using std::max;
 #ifndef OCTAVE_QUIT
 #define OCTAVE_QUIT do{}while(0)
 #endif
+
+// -----------------------------------------------------------------------------
+// Utility functions: debug output and error handling
+// -----------------------------------------------------------------------------
+
+std::logic_error mk_logic_error(char const* format, ...);
+std::logic_error mk_invalid_argument(char const* format, ...);
 
 // -----------------------------------------------------------------------------
 // Nodes and clusters

@@ -11,7 +11,6 @@
 #include <stdexcept>
 #include <cmath>
 #include <stdio.h>
-#include <stdarg.h>
 
 namespace lso_cluster {
 
@@ -23,15 +22,6 @@ static const double validate_epsilon = 1e-10;
 // -----------------------------------------------------------------------------
 // Utilities for debug output
 // -----------------------------------------------------------------------------
-
-inline std::logic_error mk_logic_error(char const* format, ...) {
-    char buf[1024];
-    va_list args;
-    va_start(args, format);
-    vsprintf(buf, format, args);
-    va_end(args);
-    return std::logic_error(buf);
-}
 
 template <typename T>
 std::ostream& operator << (std::ostream& str, std::vector<T> const& x) {
