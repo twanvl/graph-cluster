@@ -51,6 +51,7 @@ double calculate_loss_row(NMFObjectiveFun const& obj, SparseMatrix const& graph,
 
 struct NMFParams {
 	int num_iter;
+	int num_repeats;
 	int max_cluster_per_node;
 	int max_num_cluster;
 	// the objective function
@@ -61,6 +62,7 @@ struct NMFParams {
 	
 	NMFParams(std::ostream& debug_out)
 		: num_iter(100)
+		, num_repeats(1)
 		, max_cluster_per_node(std::numeric_limits<int>::max())
 		, max_num_cluster(std::numeric_limits<int>::max())
 		, verbosity(0)
@@ -109,6 +111,7 @@ class NMFOptimizer {
 	void calculate_loss();
 	void calculate_loss_debug() const;
 	// optimization
+	void run_once();
 	bool optimization_pass();
 	bool optimize_for_node(node_t i);
 //	NodeFactors best_move_of(node_t i);
@@ -131,6 +134,8 @@ class NMFOptimizer {
 	
 	// run the optimizer
 	void run();
+	// change the clustering
+	void set_clustering(NMFClustering const& clustering);
 	
 	// number of nodes
 	inline node_t size() const {
@@ -229,6 +234,19 @@ void NMFOptimizer::reset() {
 	losses.push_back(loss);
 }
 
+void NMFOptimizer::set_clustering(NMFClustering const& clustering) {
+	// check that the size is correct
+	if (clustering.size() != graph.rows()) {
+		throw mk_invalid_argument("clustering has the wrong size: clustering has %d nodes, graph has %d nodes", (int)clustering.size(), graph.rows());
+	}
+	this->clustering = clustering;
+	// loss
+	calculate_loss();
+	losses.clear();
+	losses.reserve(params.num_iter+1);
+	losses.push_back(loss);
+}
+
 void NMFOptimizer::calculate_loss() {
 	loss = nmf_cluster::calculate_loss(params.objective, graph, clustering);
 }
@@ -256,6 +274,26 @@ void NMFOptimizer::calculate_loss_debug() const {
 }
 
 void NMFOptimizer::run() {
+	NMFClustering init = clustering;
+	NMFClustering best = clustering;
+	double init_loss = loss;
+	double best_loss = loss;
+	for (int i = 0 ; i < params.num_repeats ; ++i) {
+		if (i > 0) {
+			clustering = init;
+			loss = init_loss;
+		}
+		run_once();
+		if (loss < best_loss) {
+			best = clustering;
+			best_loss = loss;
+		}
+	}
+	loss = best_loss;
+	clustering = move(best);
+}
+
+void NMFOptimizer::run_once() {
 	if (params.verbosity >= 1) {
 		calculate_loss();
 		params.debug_out << "inital loss: " << loss << endl;

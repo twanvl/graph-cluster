@@ -83,6 +83,17 @@ struct NmfMainFunction {
 			params.max_cluster_per_node = args.get_int_argument();
 		} else if (key == "num_iter" || key == "num_iterations") {
 			params.num_iter = args.get_int_argument();
+		} else if (key == "num_repeats" || key == "num_repeat" || key == "repeats") {
+			params.num_repeats = args.get_int_argument();
+		} else if (key == "seed") {
+			seed = args.get_int_argument();
+		
+		} else if (key == "init" || key == "initial") {
+			clustering = args.get_matrix_argument();
+		} else if (key == "eval" || key == "evaluate") {
+			clustering = args.get_matrix_argument();
+			optimize = false;
+		
 		// parameters of the objective function
 		} else if (key == "likelihood") {
 			params.objective.likelihood = parse_likelihood(args.get_string_argument());
@@ -122,10 +133,10 @@ struct NmfMainFunction {
 		// initialize NmfOptimizer object
 		srand(seed);
 		NMFOptimizer optimizer(graph, params);
-/*		if (!clustering.empty()) {
+		if (!clustering.empty()) {
 			// initial value
-//%			optimizer.set_clustering(clustering);
-		}*/
+			optimizer.set_clustering(clustering);
+		}
 		
 		// perform clustering
 		if (optimize) {

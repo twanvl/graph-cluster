@@ -65,6 +65,9 @@ struct NMFClustering {
 	int number_of_zeros() const {
 		return total_size() - nnz();
 	}
+	bool empty() {
+		return clustering.empty();
+	}
 	
 	// iteration
 	typedef std::vector<SparseVector>::const_iterator const_iterator;
@@ -80,6 +83,8 @@ struct NMFClustering {
 	
 	// Convert to a sparse matrix
 	SparseMatrix to_sparse_matrix() const;
+	// Convert from a sparse matrix
+	void operator = (SparseMatrix const&);
 	
 	// Convert to a hard clustering: cluster with highest membership for each node
 	vector<clus_t> to_hard_clustering() const;
@@ -116,6 +121,18 @@ struct NMFClustering {
 			cluster_weight[it->clus] += it->weight;
 		}
 		clustering[i] = new_clustering;
+	}
+	void recalc_internal_data() {
+		std::fill(cluster_size.begin(),   cluster_size.end(),   0.);
+		std::fill(cluster_weight.begin(), cluster_weight.end(), 0.);
+		for (std::vector<SparseVector>::const_iterator clus_it = clustering.begin() ; clus_it != clustering.end() ; ++clus_it) {
+			for (SparseVector::const_iterator it = clus_it->begin() ; it != clus_it->end() ; ++it) {
+				assert((size_t)it->clus < cluster_size.size());
+				assert((size_t)it->clus < cluster_weight.size());
+				cluster_size[it->clus]++;
+				cluster_weight[it->clus] += it->weight;
+			}
+		}
 	}
 };
 
@@ -169,6 +186,17 @@ clus_t NMFClustering::best_cluster(node_t i) const {
 		}
 	}
 	return best;
+}
+
+void NMFClustering::operator = (SparseMatrix const& mat) {
+	clustering.resize(mat.cols());
+	cluster_size.resize(mat.rows());
+	cluster_weight.resize(mat.rows());
+	for (int i = 0 ; i < mat.cols() ; ++i) {
+		clustering[i] = ColumnIterator(mat, i);
+	}
+	recalc_internal_data();
+	octave_stdout << "clustering: " << size() << "=" << mat.cols() << ", " << max_num_clus() << endl;
 }
 
 // -----------------------------------------------------------------------------

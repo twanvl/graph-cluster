@@ -77,6 +77,9 @@ struct SparseVector : private std::vector<SparseItem> {
 	inline double remove(clus_t k);
 	
 	inline size_t nnz() const { return size(); }
+	
+	// convert from column of a sparse matrix
+	inline void operator = (ColumnIterator it);
 };
 
 std::ostream& operator << (std::ostream& out, SparseVector const& vec) {
@@ -146,6 +149,13 @@ double sumsq(SparseVector const& x) {
 void operator += (std::vector<double>& x, SparseVector const& y) {
 	for (SparseVector::const_iterator it = y.begin() ; it != y.end() ; ++it) {
 		x[it->clus] += it->weight;
+	}
+}
+
+void SparseVector::operator = (ColumnIterator it) {
+	clear();
+	for ( ; !it.end() ; ++it) {
+		push_back(SparseItem(it.row(),it.data()));
 	}
 }
 
