@@ -33,22 +33,12 @@ inline bool operator < (SparseItem const& x, SparseItem const& y) {
 	return x.clus < y.clus;
 }
 
-#if __cplusplus < 201103L
-// Check that a list is sorted
-template <class ForwardIterator> inline bool is_sorted(ForwardIterator first, ForwardIterator last) {
-	if (first==last) return true;
-	ForwardIterator next = first;
-	while (++next!=last) {
-		if (*next<*first) return false;
-		++first;
-	}
-	return true;
-}
-#endif
-
 // A sparse vector is a vector of SparseItems, sorted by key
 struct SparseVector : private std::vector<SparseItem> {
+  private:
+	SparseVector(size_t n) : std::vector<SparseItem>(n) {}
   public:
+	SparseVector() {}
 	using std::vector<SparseItem>::iterator;
 	using std::vector<SparseItem>::const_iterator;
 	using std::vector<SparseItem>::begin;
@@ -80,6 +70,10 @@ struct SparseVector : private std::vector<SparseItem> {
 	
 	// convert from column of a sparse matrix
 	inline void operator = (ColumnIterator it);
+	
+	friend SparseVector operator + (SparseVector const&, SparseVector const&);
+	friend SparseVector operator * (SparseVector const&, double);
+	void addmul(double, SparseVector const&);
 };
 
 std::ostream& operator << (std::ostream& out, SparseVector const& vec) {
@@ -157,6 +151,66 @@ void SparseVector::operator = (ColumnIterator it) {
 	for ( ; !it.end() ; ++it) {
 		push_back(SparseItem(it.row(),it.data()));
 	}
+}
+
+SparseVector operator + (SparseVector const& a, SparseVector const& b) {
+	SparseVector out;
+	out.reserve(a.nnz()+b.nnz());
+	for (SparseVector::const_iterator it1 = a.begin(), it2 = b.begin() ; it1 != a.end() && it2 != b.end() ; ) {
+		if (it1->clus < it2->clus) {
+			out.push_back(*it1);
+			++it1;
+		} else if (it1->clus > it2->clus) {
+			out.push_back(*it2);
+			++it2;
+		} else {
+			out.push_back(SparseItem(it1->clus, it1->weight + it2->weight));
+			++it1; ++it2;
+		}
+	}
+	return out;
+}
+
+SparseItem operator * (SparseItem const& x, double y) {
+	return SparseItem(x.clus, x.weight * y);
+}
+SparseVector operator * (SparseVector const& a, double b) {
+	SparseVector out(a.size());
+	//std::transform(a.begin(), a.end(), out.begin(), bind2nd(multiplies<double>(),b));
+	SparseVector::iterator it2 = out.begin();
+	for (SparseVector::const_iterator it1 = a.begin() ; it1 != a.end() ; ++it1 ) {
+		*it2 = *it1 * b;
+	}
+	return out;
+}
+SparseVector operator * (double a, SparseVector const& b) {
+	return b * a;
+}
+
+// *this += w * b;
+void SparseVector::addmul(double w, SparseVector const& b) {
+	*this = *this + w * b;
+}
+
+// -----------------------------------------------------------------------------
+// Matrix product
+// -----------------------------------------------------------------------------
+
+
+SparseVector operator * (SparseVector const& a, std::vector<SparseVector> const& b) {
+	SparseVector out;
+	for (SparseVector::const_iterator it = a.begin() ; it != a.end() ; ++it) {
+		out.addmul(it->weight, b[it->clus]);
+	}
+	return out;
+}
+
+std::vector<SparseVector> operator * (std::vector<SparseVector> const& a, std::vector<SparseVector> const& b) {
+	std::vector<SparseVector> out(a.size());
+	for (size_t i = 0 ; i < a.size() ; ++i) {
+		out[i] = a[i] * b;
+	}
+	return out;
 }
 
 // -----------------------------------------------------------------------------

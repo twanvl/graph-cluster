@@ -57,6 +57,23 @@ std::logic_error mk_logic_error(char const* format, ...);
 std::logic_error mk_invalid_argument(char const* format, ...);
 
 // -----------------------------------------------------------------------------
+// Utility functions: sorting
+// -----------------------------------------------------------------------------
+
+#if __cplusplus < 201103L
+// Check that a list is sorted
+template <class ForwardIterator> inline bool is_sorted(ForwardIterator first, ForwardIterator last) {
+	if (first==last) return true;
+	ForwardIterator next = first;
+	while (++next!=last) {
+		if (*next<*first) return false;
+		++first;
+	}
+	return true;
+}
+#endif
+
+// -----------------------------------------------------------------------------
 // Nodes and clusters
 // -----------------------------------------------------------------------------
 

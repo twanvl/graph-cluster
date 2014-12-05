@@ -20,7 +20,7 @@ using namespace lso_cluster;
 using namespace std;
 
 // -----------------------------------------------------------------------------
-// Data type
+// Data type storing a clustering
 // -----------------------------------------------------------------------------
 
 // An NMF clustering gives for each node the clusters of which it is a member
@@ -29,6 +29,8 @@ struct NMFClustering {
 	std::vector<SparseVector> clustering; // which clusters is each node in?
 	std::vector<int>    cluster_size;     // size of each cluster
 	std::vector<double> cluster_weight;   // total weight of each cluster
+	friend struct IndirectClustering;
+	friend void swap(NMFClustering&,NMFClustering&);
 	
   public:
 	NMFClustering() {}
@@ -37,13 +39,20 @@ struct NMFClustering {
 		, cluster_size  (max_num_clus, 0)
 		, cluster_weight(max_num_clus, 0.)
 	{}
+	NMFClustering(std::vector<SparseVector> const& clustering, int max_num_clus)
+		: clustering(clustering)
+		, cluster_size  (max_num_clus, 0)
+		, cluster_weight(max_num_clus, 0.)
+	{
+		recalc_internal_data();
+	}
 	
 	// An upport bound on cluster ids
 	inline clus_t max_num_clus() const {
 		return (clus_t)cluster_size.size();
 	}
 	// Number of nodes
-	inline node_t size() const {
+	inline node_t num_nodes() const {
 		return (node_t)clustering.size();
 	}
 	inline int clus_size(clus_t k) const {
@@ -54,13 +63,13 @@ struct NMFClustering {
 	}
 	int nnz() const {
 		int nnz = 0;
-		for (node_t i = 0 ; i < size() ; ++i) {
+		for (node_t i = 0 ; i < num_nodes() ; ++i) {
 			nnz += clustering[i].nnz();
 		}
 		return nnz;
 	}
 	int total_size() const {
-		return size() * max_num_clus();
+		return num_nodes() * max_num_clus();
 	}
 	int number_of_zeros() const {
 		return total_size() - nnz();
@@ -69,7 +78,7 @@ struct NMFClustering {
 		return clustering.empty();
 	}
 	
-	// iteration
+	// iteration over the nodes
 	typedef std::vector<SparseVector>::const_iterator const_iterator;
 	inline const_iterator begin() const {
 		return clustering.begin();
@@ -84,6 +93,7 @@ struct NMFClustering {
 	// Convert to a sparse matrix
 	SparseMatrix to_sparse_matrix() const;
 	// Convert from a sparse matrix
+	NMFClustering(SparseMatrix const&);
 	void operator = (SparseMatrix const&);
 	
 	// Convert to a hard clustering: cluster with highest membership for each node
@@ -103,7 +113,7 @@ struct NMFClustering {
 	void clear() {
 		std::fill(cluster_size.begin(),   cluster_size.end(),   0.);
 		std::fill(cluster_weight.begin(), cluster_weight.end(), 0.);
-		for (node_t i = 0 ; i < size() ; ++i) {
+		for (node_t i = 0 ; i < num_nodes() ; ++i) {
 			clustering[i].clear();
 		}
 	}
@@ -122,6 +132,7 @@ struct NMFClustering {
 		}
 		clustering[i] = new_clustering;
 	}
+  private:
 	void recalc_internal_data() {
 		std::fill(cluster_size.begin(),   cluster_size.end(),   0.);
 		std::fill(cluster_weight.begin(), cluster_weight.end(), 0.);
@@ -168,8 +179,8 @@ SparseMatrix NMFClustering::to_sparse_matrix() const {
 }
 
 vector<clus_t> NMFClustering::to_hard_clustering() const {
-	std::vector<clus_t> best_clus(size());
-	for (node_t i = 0 ; i < size() ; ++i) {
+	std::vector<clus_t> best_clus(num_nodes());
+	for (node_t i = 0 ; i < num_nodes() ; ++i) {
 		best_clus[i] = best_cluster(i);
 	}
 	compress_assignments(best_clus);
@@ -189,15 +200,45 @@ clus_t NMFClustering::best_cluster(node_t i) const {
 }
 
 void NMFClustering::operator = (SparseMatrix const& mat) {
-	clustering.resize(mat.cols());
-	cluster_size.resize(mat.rows());
-	cluster_weight.resize(mat.rows());
+	NMFClustering that(mat);
+	swap(*this,that);
+}
+NMFClustering::NMFClustering(SparseMatrix const& mat)
+	: clustering(mat.cols())
+	, cluster_size(mat.rows())
+	, cluster_weight(mat.rows())
+{
 	for (int i = 0 ; i < mat.cols() ; ++i) {
 		clustering[i] = ColumnIterator(mat, i);
 	}
 	recalc_internal_data();
-	octave_stdout << "clustering: " << size() << "=" << mat.cols() << ", " << max_num_clus() << endl;
 }
+
+void swap(NMFClustering& a, NMFClustering& b) {
+	swap(a.clustering,     b.clustering);
+	swap(a.cluster_size,   b.cluster_size);
+	swap(a.cluster_weight, b.cluster_weight);
+}
+
+// -----------------------------------------------------------------------------
+// A clustering of a clustering
+// -----------------------------------------------------------------------------
+
+// each cluster in the indirect clustering is a linear combination of clusters in the base clustering
+// in other words, I=B*R
+struct IndirectClustering {
+	NMFClustering const& base;
+	NMFClustering refined;
+	
+	IndirectClustering(NMFClustering const& base, int max_num_clus)
+		: base(base)
+		, refined(base.max_num_clus(), max_num_clus)
+	{}
+	
+	NMFClustering to_clustering() const {
+		return NMFClustering(base.clustering * refined.clustering, refined.max_num_clus());
+	}
+};
 
 // -----------------------------------------------------------------------------
 }

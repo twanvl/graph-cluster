@@ -138,7 +138,7 @@ double calculate_loss(NMFObjectiveFun const& obj, SparseMatrix const& graph, NMF
 		//   L = ∑{ij} 0.5*(∑{k}U(i,k)U(j,k) - A(i,j))^2
 		//     = 0.5*∑{ij}(∑{k}U(i,k)U(j,k))^2  -  ∑{ij} A(i,j)*(∑{k}U(i,k)U(j,k))  +  0.5*∑{ij} A(i,j)^2
 		// note: only include the strict lower diagonal part
-		for (node_t i = 0 ; i < clustering.size() ; ++i) {
+		for (node_t i = 0 ; i < clustering.num_nodes() ; ++i) {
 			for (DenseColumnIterator edge(graph,i); edge.row() < i; ++edge) {
 				double vh = dot(clustering[i], clustering[edge.row()]);
 				double v  = edge.data();
@@ -157,7 +157,7 @@ double calculate_loss(NMFObjectiveFun const& obj, SparseMatrix const& graph, NMF
 		for (clus_t k = 0; k < clustering.max_num_clus() ; ++k) {
 			loss += 0.5 * clustering.clus_weight(k) * clustering.clus_weight(k);
 		}
-		for (node_t i = 0 ; i < clustering.size(); ++i) {
+		for (node_t i = 0 ; i < clustering.num_nodes(); ++i) {
 			loss -= 0.5 * sumsq(clustering[i]);
 			for (ColumnIterator edge(graph,i); !edge.end(); ++edge) {
 				if (edge.row() >= i) break; // only below diagonal
@@ -173,7 +173,7 @@ double calculate_loss(NMFObjectiveFun const& obj, SparseMatrix const& graph, NMF
 	}
 	
 	// Regularization term / prior on membership coefficients
-	for (node_t i = 0 ; i < clustering.size() ; ++i) {
+	for (node_t i = 0 ; i < clustering.num_nodes() ; ++i) {
 		for (SparseVector::const_iterator it = clustering[i].begin() ; it != clustering[i].end() ; ++it) {
 			loss += weight_prior_term(obj, it->weight);
 		}
@@ -187,7 +187,7 @@ double calculate_loss(NMFObjectiveFun const& obj, SparseMatrix const& graph, NMF
 	}
 	
 	// Clusters per node
-	for (node_t i = 0 ; i < clustering.size() ; ++i) {
+	for (node_t i = 0 ; i < clustering.num_nodes() ; ++i) {
 		loss += support_prior_term(obj, clustering[i].nnz());
 	}
 	

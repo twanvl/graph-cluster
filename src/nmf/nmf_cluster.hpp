@@ -139,7 +139,7 @@ class NMFOptimizer {
 	
 	// number of nodes
 	inline node_t size() const {
-		return (node_t)clustering.size();
+		return (node_t)clustering.num_nodes();
 	}
 	inline clus_t max_num_clus() const {
 		return clustering.max_num_clus();
@@ -236,8 +236,8 @@ void NMFOptimizer::reset() {
 
 void NMFOptimizer::set_clustering(NMFClustering const& clustering) {
 	// check that the size is correct
-	if (clustering.size() != graph.rows()) {
-		throw mk_invalid_argument("clustering has the wrong size: clustering has %d nodes, graph has %d nodes", (int)clustering.size(), graph.rows());
+	if (clustering.num_nodes() != graph.rows()) {
+		throw mk_invalid_argument("clustering has the wrong size: clustering has %d nodes, graph has %d nodes", (int)clustering.num_nodes(), graph.rows());
 	}
 	this->clustering = clustering;
 	// loss
