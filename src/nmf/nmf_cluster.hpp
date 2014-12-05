@@ -527,7 +527,6 @@ double NMFOptimizer::loss_after_addition(node_t i, clus_t clus, double weight) {
 }
 
 void NMFOptimizer::set_active_node(node_t i) {
-	
 	// find adjacent clusters, i.e. clusters to which we share at least some edge weight
 	// collect sum of cluster membership and sum of edge weights*cluster membership
 	neighbors.clear();

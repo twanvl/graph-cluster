@@ -227,6 +227,7 @@ void swap(NMFClustering& a, NMFClustering& b) {
 // each cluster in the indirect clustering is a linear combination of clusters in the base clustering
 // in other words, I=B*R
 struct IndirectClustering {
+	vector<vector<node_t> > nodes_in_cluster; // which base nodes are in which base cluster?
 	NMFClustering const& base;
 	NMFClustering refined;
 	
