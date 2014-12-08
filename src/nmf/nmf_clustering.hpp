@@ -148,17 +148,20 @@ struct NMFClustering {
 };
 
 SparseMatrix NMFClustering::to_sparse_matrix() const {
-	// find number of non-empty clusters, and remap them to [0..]
-	std::vector<int> clus_id(max_num_clus(), -1); // mapping cluster id to compressed cluster id
-	size_t num_clus = 0;   // number of non-empty clusters
+	// find the non-empty clusters, and the number of nonzeros
+	std::vector<int> clus_id(max_num_clus(), -1); // mapping cluster id to compressed cluster id, or -1
 	size_t num_inclus = 0; // number of non-zeros
 	for (NMFClustering::const_iterator it = clustering.begin() ; it != clustering.end() ; ++it) {
 		for (SparseVector::const_iterator it2 = it->begin() ; it2 != it->end() ; ++it2) {
-			if (clus_id[it2->clus] == -1) {
-				clus_id[it2->clus] = num_clus;
-				num_clus++;
-			}
+			clus_id[it2->clus] = 1;
 			num_inclus++;
+		}
+	}
+	// label the clusters [0..]
+	size_t num_clus = 0;   // number of non-empty clusters
+	for (std::vector<int>::iterator it = clus_id.begin() ; it != clus_id.end() ; ++it) {
+		if (*it != -1) {
+			*it = num_clus++;
 		}
 	}
 	
